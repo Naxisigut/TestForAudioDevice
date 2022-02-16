@@ -7,6 +7,9 @@
 #include <QtDebug>
 #include <QAudioDeviceInfo>
 #include <QAudio>
+#include <QFile>
+#include <QMessageBox>
+#include <QUrl>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -20,15 +23,15 @@ public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
     QAudioRecorder *audioRecorder;
-    QStringList audioInputsList;
+    QString tempPath;
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *e);
 
 private slots:
     void on_startButton_clicked();
 
     void on_stopButton_clicked();
-
-    void on_audioListCombox_highlighted(const QString &arg1);
 
 private:
     Ui::Widget *ui;
