@@ -9,6 +9,10 @@ Widget::Widget(QWidget *parent)
     audioRecorder = new QAudioRecorder;
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
+
+    din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
+    out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
+    fftwPlan = fftw_plan_dft_1d(N, din, out, FFTW_FORWARD, FFTW_ESTIMATE);
 }
 
 Widget::~Widget()
@@ -54,12 +58,61 @@ void Widget::on_startButton_clicked()
     tempFile.close();
 
     /****************功能：开始录音，写入tempFile**************/
+//    QAudioEncoderSettings audioSettings;
+//    audioSettings.setSampleRate(48000);
+//    audioSettings.setChannelCount(2);
+
     audioRecorder->setAudioInput(ui->audioListCombox->currentText());
     audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempPath));
+//    audioRecorder->setAudioSettings(audioSettings);
     audioRecorder->record();
-//    qDebug() << audioRecorder->status();
-//    qDebug() << audioRecorder->state();
-//    qDebug() << audioRecorder->error();
+    QTest::qWait(10000);//延时10s，限定录制时间
+    qDebug() << audioRecorder->duration();
+    audioRecorder->stop();
+    qDebug()<<"录音结束";
+
+    /****************功能：分析tempFile**************/
+    sourceFile.load(tempPath.toStdString());
+    qDebug() << "采样率：" << sourceFile.getSampleRate() << endl;
+    qDebug() << "位深度/采样深度："<< sourceFile.getBitDepth() << endl;
+    qDebug() << "声道数：" << sourceFile.getNumChannels() << endl;
+    qDebug() << "单声道采样总数：" << sourceFile.getNumSamplesPerChannel() << endl;
+    qDebug() << "音频长度：" << sourceFile.getLengthInSeconds() << "s" << endl;
+    if ((din == NULL)||(out == NULL)){
+        qDebug() << "Error:insufficient available memory" << endl;
+    }
+    else{
+        for (int i=0; i<N; i++)
+        {
+            din[i][0] = sourceFile.samples[0][i];//将samples的channel0的数据赋给din
+            din[i][1] = 0;
+        }
+    }
+    fftw_execute(fftwPlan);
+
+//    QFile outputFileDin("../TestForAR720/outputDin.txt");
+//    outputFileDin.open(QIODevice::WriteOnly |QIODevice::Truncate);
+//    QTextStream outDinStream(&outputFileDin);
+//    outDinStream.setCodec("UTF-8");
+//    outDinStream << "Amplitude" << endl;
+//    for(int i=0; i<N; i++)
+//    {
+//        outDinStream << i << " " << din[i][0] << endl;
+//    }
+
+    outputPath = qApp->applicationDirPath();
+    outputPath += "/output.txt";
+    qDebug() << outputPath;
+    QFile outputFile(outputPath);
+    outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
+    QTextStream outStream(&outputFile);
+    outStream.setCodec("UTF-8");
+    outStream << "Amplitude" << endl;
+    for(int i=1; i<N/2; i++)
+    {
+        outStream << i << " " << qSqrt(qPow(out[i][0],2)+qPow(out[i][1],2)) << endl;
+    }
+
 }
 
 void Widget::on_stopButton_clicked()

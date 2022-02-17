@@ -10,6 +10,13 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QUrl>
+#include <QTest>
+#include <QtMath>
+#include <fftw3.h>
+#include <AudioFile.h>
+
+#define N 131072
+//#define N 8192
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -24,6 +31,10 @@ public:
     ~Widget();
     QAudioRecorder *audioRecorder;
     QString tempPath;
+    QString outputPath;
+    AudioFile<double> sourceFile;
+    fftw_complex *din,*out;
+    fftw_plan fftwPlan;
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);

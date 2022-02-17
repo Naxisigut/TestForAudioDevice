@@ -20,12 +20,16 @@ SOURCES += \
     widget.cpp
 
 HEADERS += \
+    AudioFile.h \
+    fftw/include/fftw3.h \
     widget.h
 
 FORMS += \
     widget.ui
 
-QT += multimedia
+QT += \
+    multimedia \
+    testlib
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
