@@ -15,8 +15,8 @@
 #include <fftw3.h>
 #include <AudioFile.h>
 
-#define N 131072
-//#define N 8192
+//#define N 131072
+#define N 8192
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -35,6 +35,11 @@ public:
     AudioFile<double> sourceFile;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
+    double *powOut,*fOut;
+    double THD1KHz;
+    double FindMaxInArray(double arr[],int cnt);
+    void getPowArrayAtFrequency(double f, double arr[], int cnt);
+    double THDCalculate(double f);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);

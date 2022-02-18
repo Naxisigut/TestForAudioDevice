@@ -13,6 +13,8 @@ Widget::Widget(QWidget *parent)
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     fftwPlan = fftw_plan_dft_1d(N, din, out, FFTW_FORWARD, FFTW_ESTIMATE);
+    powOut = (double*)malloc(sizeof(double)*N);
+    fOut = (double*)malloc(sizeof(double)*N);
 }
 
 Widget::~Widget()
@@ -36,6 +38,29 @@ bool Widget::eventFilter(QObject *obj, QEvent *e)
     }else{
         return QWidget::eventFilter(obj, e);
     }
+}
+
+double Widget::FindMaxInArray(double arr[],int cnt)
+{
+    double max = arr[0];
+    for (int i=1;i<cnt;i++)
+    {
+        max = (max<arr[i]?arr[i]:max);
+//        qDebug()<<i<<max;
+    };
+    return max;
+}
+
+void Widget::getPowArrayAtFrequency(double f, double arr[], int cnt)
+{
+    double accurateIndex = f/((double)11025/N);
+    qDebug()<<accurateIndex;
+    int middleIndex = (int)(accurateIndex*10)%10 < 5?(int)accurateIndex:(int)accurateIndex+1;//根据第一位小数四舍五入
+    for(int i=0; i<cnt; i++)
+    {
+        arr[i] = powOut[middleIndex-cnt/2+i];
+    }
+    qDebug()<<middleIndex;
 }
 
 void Widget::on_startButton_clicked()
@@ -73,11 +98,11 @@ void Widget::on_startButton_clicked()
 
     /****************功能：分析tempFile**************/
     sourceFile.load(tempPath.toStdString());
-    qDebug() << "采样率：" << sourceFile.getSampleRate() << endl;
-    qDebug() << "位深度/采样深度："<< sourceFile.getBitDepth() << endl;
-    qDebug() << "声道数：" << sourceFile.getNumChannels() << endl;
-    qDebug() << "单声道采样总数：" << sourceFile.getNumSamplesPerChannel() << endl;
-    qDebug() << "音频长度：" << sourceFile.getLengthInSeconds() << "s" << endl;
+//    qDebug() << "采样率：" << sourceFile.getSampleRate() << endl;
+//    qDebug() << "位深度/采样深度："<< sourceFile.getBitDepth() << endl;
+//    qDebug() << "声道数：" << sourceFile.getNumChannels() << endl;
+//    qDebug() << "单声道采样总数：" << sourceFile.getNumSamplesPerChannel() << endl;
+//    qDebug() << "音频长度：" << sourceFile.getLengthInSeconds() << "s" << endl;
     if ((din == NULL)||(out == NULL)){
         qDebug() << "Error:insufficient available memory" << endl;
     }
@@ -90,6 +115,7 @@ void Widget::on_startButton_clicked()
     }
     fftw_execute(fftwPlan);
 
+    /****************功能：输出源音频数据至文件**************/
 //    QFile outputFileDin("../TestForAR720/outputDin.txt");
 //    outputFileDin.open(QIODevice::WriteOnly |QIODevice::Truncate);
 //    QTextStream outDinStream(&outputFileDin);
@@ -102,20 +128,30 @@ void Widget::on_startButton_clicked()
 
     outputPath = qApp->applicationDirPath();
     outputPath += "/output.txt";
-    qDebug() << outputPath;
+//    qDebug() << outputPath;
     QFile outputFile(outputPath);
     outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
     QTextStream outStream(&outputFile);
     outStream.setCodec("UTF-8");
     outStream << "Amplitude" << endl;
-    for(int i=1; i<N/2; i++)
+    for(int i=0; i<N; i++)
     {
-        outStream << i << " " << qSqrt(qPow(out[i][0],2)+qPow(out[i][1],2)) << endl;
+        fOut[i] = (double)i*11025/N;//计算频率
+        powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
+        outStream << fOut[i] << "Hz " << powOut[i] << endl;
     }
+    double powArrayAt1Khz[5];
+    getPowArrayAtFrequency(1000, powArrayAt1Khz, 5);
+    qDebug() << FindMaxInArray(powArrayAt1Khz,5);
 
 }
 
+//double Widget::FindMaxInArray()
+
 void Widget::on_stopButton_clicked()
 {
-    audioRecorder->stop();
+    double a[5];
+    getPowArrayAtFrequency(1000, a, 5);
+    for(int i=0;i<5;i++){
+    qDebug()<<a[i];}
 }
