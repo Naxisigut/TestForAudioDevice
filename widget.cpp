@@ -140,9 +140,44 @@ void Widget::on_startButton_clicked()
         powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
         outStream << fOut[i] << "Hz " << powOut[i] << endl;
     }
-    double powArrayAt1Khz[5];
-    getPowArrayAtFrequency(1000, powArrayAt1Khz, 5);
-    qDebug() << FindMaxInArray(powArrayAt1Khz,5);
+    /****************功能：计算THD**************/
+    double tempPowArrayAtFrequency[5];
+    double fundamentalWavePow, sumOfHarmonicWavePow=0;
+    for(int i=1;i<=11025/2000;i++)//11025折半为最大的计算频率
+    {
+        getPowArrayAtFrequency(i*1000, tempPowArrayAtFrequency, 5);
+        if(i==1){
+            fundamentalWavePow = FindMaxInArray(tempPowArrayAtFrequency, 5);
+        }else{
+            sumOfHarmonicWavePow += FindMaxInArray(tempPowArrayAtFrequency, 5);
+        }
+    }
+    double THDAt1KHz = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
+    qDebug() << "THDTest"<< THDAt1KHz;
+
+//    double powArrayAt1Khz[5];
+//    getPowArrayAtFrequency(1000, powArrayAt1Khz, 5);
+//    double powAt1KHz = FindMaxInArray(powArrayAt1Khz,5);
+//    qDebug() <<"1K" << powAt1KHz;
+//    double powArrayAt2Khz[5];
+//    getPowArrayAtFrequency(2000, powArrayAt2Khz, 5);
+//    double powAt2KHz = FindMaxInArray(powArrayAt2Khz,5);
+//    qDebug() <<"2K" << powAt2KHz;
+//    double powArrayAt3Khz[5];
+//    getPowArrayAtFrequency(3000, powArrayAt3Khz, 5);
+//    double powAt3KHz = FindMaxInArray(powArrayAt3Khz,5);
+//    qDebug() <<"3K" << powAt3KHz;
+//    double powArrayAt4Khz[5];
+//    getPowArrayAtFrequency(4000, powArrayAt4Khz, 5);
+//    double powAt4KHz = FindMaxInArray(powArrayAt4Khz,5);
+//    qDebug() <<"4K" << powAt4KHz;
+//    double powArrayAt5Khz[5];
+//    getPowArrayAtFrequency(5000, powArrayAt5Khz, 5);
+//    double powAt5KHz = FindMaxInArray(powArrayAt5Khz,5);
+//    qDebug() <<"5K" << powAt5KHz;
+//    double THDAt1KHz = qSqrt((powAt2KHz+powAt3KHz+powAt4KHz+powAt5KHz)/powAt1KHz);
+//    qDebug() << "THD"<< THDAt1KHz;
+
 
 }
 
