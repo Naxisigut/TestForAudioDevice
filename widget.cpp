@@ -10,6 +10,8 @@ Widget::Widget(QWidget *parent)
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
 
+    TestAudio = qApp->applicationDirPath().append("/1KHz.mp3");
+
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     fftwPlan = fftw_plan_dft_1d(N, din, out, FFTW_FORWARD, FFTW_ESTIMATE);
@@ -51,24 +53,40 @@ double Widget::FindMaxInArray(double arr[],int cnt)
     return max;
 }
 
-void Widget::getPowArrayAtFrequency(double f, double arr[], int cnt)
+void Widget::getPowArrayAtFrequency(double f, double arr[], int cnt, double sourcePowArr[])
 {
     double accurateIndex = f/((double)11025/N);
-    qDebug()<<accurateIndex;
+//    qDebug()<<accurateIndex;
     int middleIndex = (int)(accurateIndex*10)%10 < 5?(int)accurateIndex:(int)accurateIndex+1;//根据第一位小数四舍五入
     for(int i=0; i<cnt; i++)
     {
-        arr[i] = powOut[middleIndex-cnt/2+i];
+        arr[i] = sourcePowArr[middleIndex-cnt/2+i];
     }
-    qDebug()<<middleIndex;
+    //    qDebug()<<middleIndex;
 }
 
-void Widget::on_startButton_clicked()
+double Widget::THDCalculate(double f, double sourcePowArr[])
+{
+    double tempPowArrayAtFrequency[5];
+    double fundamentalWavePow, sumOfHarmonicWavePow=0;
+    for(int i=1; i <= 11025/(2*(int)f); i++)//11025折半为最大的计算频率
+    {
+        getPowArrayAtFrequency(i*f, tempPowArrayAtFrequency, 5, sourcePowArr);
+        if(i==1){
+            fundamentalWavePow = FindMaxInArray(tempPowArrayAtFrequency, 5);
+        }else{
+            sumOfHarmonicWavePow += FindMaxInArray(tempPowArrayAtFrequency, 5);
+        }
+    }
+    double THD = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
+    return THD;
+}
+
+void Widget::TestFuncBase()
 {
     /****************功能：新建/清空tempFile******************/
     //在程序运行目录下新建temp文件
-    tempPath = qApp->applicationDirPath();//获取程序所在路径
-    tempPath += "/temp.wav";//创建temp文件的路径
+    QString tempPath = qApp->applicationDirPath().append("/temp.wav");//创建temp文件的路径
 
     //若temp.wav已存在，录制前清空其之前的数据
     //若不存在，会在程序所在目录下自动新建一个temp.wav
@@ -81,6 +99,9 @@ void Widget::on_startButton_clicked()
     return;
     }
     tempFile.close();
+
+    /****************功能：播放测试音频**************/
+
 
     /****************功能：开始录音，写入tempFile**************/
 //    QAudioEncoderSettings audioSettings;
@@ -97,6 +118,7 @@ void Widget::on_startButton_clicked()
     qDebug()<<"录音结束";
 
     /****************功能：分析tempFile**************/
+    AudioFile<double> sourceFile;
     sourceFile.load(tempPath.toStdString());
 //    qDebug() << "采样率：" << sourceFile.getSampleRate() << endl;
 //    qDebug() << "位深度/采样深度："<< sourceFile.getBitDepth() << endl;
@@ -116,19 +138,8 @@ void Widget::on_startButton_clicked()
     fftw_execute(fftwPlan);
 
     /****************功能：输出源音频数据至文件**************/
-//    QFile outputFileDin("../TestForAR720/outputDin.txt");
-//    outputFileDin.open(QIODevice::WriteOnly |QIODevice::Truncate);
-//    QTextStream outDinStream(&outputFileDin);
-//    outDinStream.setCodec("UTF-8");
-//    outDinStream << "Amplitude" << endl;
-//    for(int i=0; i<N; i++)
-//    {
-//        outDinStream << i << " " << din[i][0] << endl;
-//    }
 
-    outputPath = qApp->applicationDirPath();
-    outputPath += "/output.txt";
-//    qDebug() << outputPath;
+    QString outputPath = qApp->applicationDirPath().append("/AmpOutput.txt");
     QFile outputFile(outputPath);
     outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
     QTextStream outStream(&outputFile);
@@ -140,53 +151,100 @@ void Widget::on_startButton_clicked()
         powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
         outStream << fOut[i] << "Hz " << powOut[i] << endl;
     }
+
     /****************功能：计算THD**************/
-    double tempPowArrayAtFrequency[5];
-    double fundamentalWavePow, sumOfHarmonicWavePow=0;
-    for(int i=1;i<=11025/2000;i++)//11025折半为最大的计算频率
-    {
-        getPowArrayAtFrequency(i*1000, tempPowArrayAtFrequency, 5);
-        if(i==1){
-            fundamentalWavePow = FindMaxInArray(tempPowArrayAtFrequency, 5);
-        }else{
-            sumOfHarmonicWavePow += FindMaxInArray(tempPowArrayAtFrequency, 5);
-        }
-    }
-    double THDAt1KHz = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
-    qDebug() << "THDTest"<< THDAt1KHz;
+    double THD = THDCalculate(1000, powOut);
+    qDebug() << "THD" << THD;
 
-//    double powArrayAt1Khz[5];
-//    getPowArrayAtFrequency(1000, powArrayAt1Khz, 5);
-//    double powAt1KHz = FindMaxInArray(powArrayAt1Khz,5);
-//    qDebug() <<"1K" << powAt1KHz;
-//    double powArrayAt2Khz[5];
-//    getPowArrayAtFrequency(2000, powArrayAt2Khz, 5);
-//    double powAt2KHz = FindMaxInArray(powArrayAt2Khz,5);
-//    qDebug() <<"2K" << powAt2KHz;
-//    double powArrayAt3Khz[5];
-//    getPowArrayAtFrequency(3000, powArrayAt3Khz, 5);
-//    double powAt3KHz = FindMaxInArray(powArrayAt3Khz,5);
-//    qDebug() <<"3K" << powAt3KHz;
-//    double powArrayAt4Khz[5];
-//    getPowArrayAtFrequency(4000, powArrayAt4Khz, 5);
-//    double powAt4KHz = FindMaxInArray(powArrayAt4Khz,5);
-//    qDebug() <<"4K" << powAt4KHz;
-//    double powArrayAt5Khz[5];
-//    getPowArrayAtFrequency(5000, powArrayAt5Khz, 5);
-//    double powAt5KHz = FindMaxInArray(powArrayAt5Khz,5);
-//    qDebug() <<"5K" << powAt5KHz;
-//    double THDAt1KHz = qSqrt((powAt2KHz+powAt3KHz+powAt4KHz+powAt5KHz)/powAt1KHz);
-//    qDebug() << "THD"<< THDAt1KHz;
-
-
+//    double tempPowArrayAtFrequency[5];
+//    double fundamentalWavePow, sumOfHarmonicWavePow=0;
+//    for(int i=1;i<=11025/2000;i++)//11025折半为最大的计算频率
+//    {
+//        getPowArrayAtFrequency(i*1000, tempPowArrayAtFrequency, 5, powOut);
+//        if(i==1){
+//            fundamentalWavePow = FindMaxInArray(tempPowArrayAtFrequency, 5);
+//        }else{
+//            sumOfHarmonicWavePow += FindMaxInArray(tempPowArrayAtFrequency, 5);
+//        }
+//    }
+//    double THDAt1KHz = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
+//    qDebug() << "THDFun1"<< THDAt1KHz;
 }
 
-//double Widget::FindMaxInArray()
+void Widget::TestFunc1st()
+{
+    /****************功能：新建/清空tempFile******************/
+    //在程序运行目录下新建temp文件
+    QString tempPath = qApp->applicationDirPath().append("/temp.wav");//创建temp文件的路径
+
+    //若temp.wav已存在，录制前清空其之前的数据
+    //若不存在，会在程序所在目录下自动新建一个temp.wav
+    QFile tempFile(tempPath);
+    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
+    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
+    {
+    qDebug()<< "QFileOpenFail";
+    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
+    return;
+    }
+    tempFile.close();
+
+    /****************功能：开始录音，写入tempFile**************/
+    audioRecorder->setAudioInput(ui->audioListCombox->currentText());
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempPath));
+    audioRecorder->record();
+    QTest::qWait(10000);//延时10s，限定录制时间
+    audioRecorder->stop();
+    qDebug()<<"录音结束";
+
+    /****************功能：分析tempFile**************/
+    AudioFile<double> sourceFile;
+    sourceFile.load(tempPath.toStdString());
+    if ((din == NULL)||(out == NULL)){
+        qDebug() << "Error:insufficient available memory" << endl;
+    }
+    else{
+        for (int i=0; i<N; i++)
+        {
+            din[i][0] = sourceFile.samples[0][i];//将samples的channel0的数据赋给din
+            din[i][1] = 0;
+        }
+    }
+    fftw_execute(fftwPlan);
+
+    /****************功能：输出源音频数据至文件**************/
+    QString outputPath = qApp->applicationDirPath().append("/AmpOutput.txt");
+    QFile outputFile(outputPath);
+    outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
+    QTextStream outStream(&outputFile);
+    outStream.setCodec("UTF-8");
+    outStream << "Amplitude" << endl;
+    for(int i=0; i<N; i++)
+    {
+        fOut[i] = (double)i*11025/N;//计算频率
+        powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
+        outStream << fOut[i] << "Hz " << powOut[i] << endl;
+    }
+
+    /****************功能：计算THD**************/
+    double THD = THDCalculate(1000, powOut);
+    qDebug() << "THD" << THD;
+}
+
+void Widget::TestFunc2nd()
+{
+   audioPlayer->setMedia(QUrl::fromLocalFile(TestAudio));
+   audioPlayer->setVolume(30);
+   audioPlayer->play();
+}
+
+void Widget::on_startButton_clicked()
+{
+    TestFunc1st();
+}
+
 
 void Widget::on_stopButton_clicked()
 {
-    double a[5];
-    getPowArrayAtFrequency(1000, a, 5);
-    for(int i=0;i<5;i++){
-    qDebug()<<a[i];}
+    TestFunc2nd();
 }

@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include <QAudioRecorder>
-#include <QTimer>
 #include <QtDebug>
 #include <QAudioDeviceInfo>
 #include <QAudio>
@@ -12,6 +11,7 @@
 #include <QUrl>
 #include <QTest>
 #include <QtMath>
+#include <QMediaPlayer>
 #include <fftw3.h>
 #include <AudioFile.h>
 
@@ -29,17 +29,18 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
-    QAudioRecorder *audioRecorder;
-    QString tempPath;
-    QString outputPath;
-    AudioFile<double> sourceFile;
+    QString TestAudio;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
+    QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
-    double THD1KHz;
+    QMediaPlayer *audioPlayer;
     double FindMaxInArray(double arr[],int cnt);
-    void getPowArrayAtFrequency(double f, double arr[], int cnt);
-    double THDCalculate(double f);
+    void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
+    double THDCalculate(double f, double sourcePow[]);
+    void TestFuncBase();
+    void TestFunc1st();
+    void TestFunc2nd();
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);
