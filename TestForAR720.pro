@@ -17,13 +17,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     main.cpp \
-    waviodevice.cpp \
     widget.cpp
 
 HEADERS += \
     AudioFile.h \
     fftw/include/fftw3.h \
-    waviodevice.h \
     widget.h
 
 FORMS += \

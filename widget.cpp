@@ -10,7 +10,16 @@ Widget::Widget(QWidget *parent)
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
 
-    TestAudio = qApp->applicationDirPath().append("/1KHz.mp3");
+    testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
+    // Set up the format, eg.
+    format.setSampleRate(44100);
+    format.setChannelCount(1);
+    format.setSampleSize(16);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::UnSignedInt);
+
+
 
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
@@ -233,9 +242,13 @@ void Widget::TestFunc1st()
 
 void Widget::TestFunc2nd()
 {
-   audioPlayer->setMedia(QUrl::fromLocalFile(TestAudio));
-   audioPlayer->setVolume(30);
-   audioPlayer->play();
+//   audioPlayer->setMedia(QUrl::fromLocalFile(TestAudio));
+//   audioPlayer->setVolume(30);
+//   audioPlayer->play();
+    QFile testFile(testAudioPath);
+    testFile.open(QIODevice::ReadOnly);
+
+
 }
 
 void Widget::on_startButton_clicked()

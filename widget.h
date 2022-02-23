@@ -29,7 +29,8 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
-    QString TestAudio;
+    QString testAudioPath;
+    QAudioFormat format;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
