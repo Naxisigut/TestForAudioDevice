@@ -5,7 +5,8 @@
 #include <QAudioRecorder>
 #include <QtDebug>
 #include <QAudioDeviceInfo>
-#include <QAudio>
+#include <QAudioOutput>
+//#include <QAudio>
 #include <QFile>
 #include <QMessageBox>
 #include <QUrl>
@@ -31,17 +32,19 @@ public:
     ~Widget();
     QString testAudioPath;
     QAudioFormat format;
+    QList<QAudioDeviceInfo> outputDeviceList;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
-    QMediaPlayer *audioPlayer;
+//    QMediaPlayer *audioPlayer;
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double THDCalculate(double f, double sourcePow[]);
     void TestFuncBase();
     void TestFunc1st();
     void TestFunc2nd();
+    void playTestSound(qreal volume, int duration);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);

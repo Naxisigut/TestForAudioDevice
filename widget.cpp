@@ -10,6 +10,12 @@ Widget::Widget(QWidget *parent)
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
 
+    foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
+    {
+        outputDeviceList.append(deviceInfo);
+        ui->outputListCombox->addItem(deviceInfo.deviceName());
+    }
+
     testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
     // Set up the format, eg.
     format.setSampleRate(44100);
@@ -17,9 +23,7 @@ Widget::Widget(QWidget *parent)
     format.setSampleSize(16);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::UnSignedInt);
-
-
+    format.setSampleType(QAudioFormat::SignedInt);
 
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
@@ -226,7 +230,7 @@ void Widget::TestFunc1st()
     QFile outputFile(outputPath);
     outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
     QTextStream outStream(&outputFile);
-    outStream.setCodec("UTF-8");
+    outStream.setCodec("UTF-8");``
     outStream << "Amplitude" << endl;
     for(int i=0; i<N; i++)
     {
@@ -245,10 +249,33 @@ void Widget::TestFunc2nd()
 //   audioPlayer->setMedia(QUrl::fromLocalFile(TestAudio));
 //   audioPlayer->setVolume(30);
 //   audioPlayer->play();
+
+    playTestSound(0.01, 5000);
+    QTest::qWait(1000);
+    playTestSound(0.01, 8000);
+    QTest::qWait(1000);
+    playTestSound(0.01, 15000);
+}
+
+void Widget::playTestSound(qreal volume, int duration)
+{
     QFile testFile(testAudioPath);
     testFile.open(QIODevice::ReadOnly);
 
-
+    QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
+//    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+//    if (info.isFormatSupported(format) != true){
+//        qDebug() << "Raw audio format not supported by backend, cannot play audio.";
+//    }
+//    else{
+    QAudioOutput audioOutput(info, format, this);
+    audioOutput.start(&testFile);
+    audioOutput.setVolume(volume);
+//    qDebug()<< output.state();
+//    qDebug() << output.error();
+    QTest::qWait(duration);
+    audioOutput.stop();
+    testFile.close();
 }
 
 void Widget::on_startButton_clicked()
