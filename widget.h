@@ -13,8 +13,10 @@
 #include <QTest>
 #include <QtMath>
 #include <QMediaPlayer>
+#include <QTimer>
 #include <fftw3.h>
 #include <AudioFile.h>
+#include <playTestAudioThread.h>
 
 //#define N 131072
 #define N 8192
@@ -31,12 +33,14 @@ public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
     QString testAudioPath;
+    QString recordedAudioPath;
     QAudioFormat format;
     QList<QAudioDeviceInfo> outputDeviceList;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
+    QTimer testSoundDuration;
 //    QMediaPlayer *audioPlayer;
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
@@ -45,6 +49,7 @@ public:
     void TestFunc1st();
     void TestFunc2nd();
     void playTestSound(qreal volume, int duration);
+    void startRecord();
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);

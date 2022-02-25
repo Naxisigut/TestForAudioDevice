@@ -10,13 +10,14 @@ Widget::Widget(QWidget *parent)
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
 
+    playTestAudioThread play;
+
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
         ui->outputListCombox->addItem(deviceInfo.deviceName());
     }
 
-    testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
     // Set up the format, eg.
     format.setSampleRate(44100);
     format.setChannelCount(1);
@@ -24,6 +25,8 @@ Widget::Widget(QWidget *parent)
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
+
+    recordedAudioPath = qApp->applicationDirPath().append("/temp.wav");
 
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
@@ -98,12 +101,9 @@ double Widget::THDCalculate(double f, double sourcePowArr[])
 void Widget::TestFuncBase()
 {
     /****************功能：新建/清空tempFile******************/
-    //在程序运行目录下新建temp文件
-    QString tempPath = qApp->applicationDirPath().append("/temp.wav");//创建temp文件的路径
-
     //若temp.wav已存在，录制前清空其之前的数据
     //若不存在，会在程序所在目录下自动新建一个temp.wav
-    QFile tempFile(tempPath);
+    QFile tempFile(recordedAudioPath);
     bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
     if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
     {
@@ -122,7 +122,7 @@ void Widget::TestFuncBase()
 //    audioSettings.setChannelCount(2);
 
     audioRecorder->setAudioInput(ui->audioListCombox->currentText());
-    audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempPath));
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
 //    audioRecorder->setAudioSettings(audioSettings);
     audioRecorder->record();
     QTest::qWait(10000);//延时10s，限定录制时间
@@ -132,7 +132,7 @@ void Widget::TestFuncBase()
 
     /****************功能：分析tempFile**************/
     AudioFile<double> sourceFile;
-    sourceFile.load(tempPath.toStdString());
+    sourceFile.load(recordedAudioPath.toStdString());
 //    qDebug() << "采样率：" << sourceFile.getSampleRate() << endl;
 //    qDebug() << "位深度/采样深度："<< sourceFile.getBitDepth() << endl;
 //    qDebug() << "声道数：" << sourceFile.getNumChannels() << endl;
@@ -187,12 +187,9 @@ void Widget::TestFuncBase()
 void Widget::TestFunc1st()
 {
     /****************功能：新建/清空tempFile******************/
-    //在程序运行目录下新建temp文件
-    QString tempPath = qApp->applicationDirPath().append("/temp.wav");//创建temp文件的路径
-
     //若temp.wav已存在，录制前清空其之前的数据
     //若不存在，会在程序所在目录下自动新建一个temp.wav
-    QFile tempFile(tempPath);
+    QFile tempFile(recordedAudioPath);
     bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
     if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
     {
@@ -204,7 +201,7 @@ void Widget::TestFunc1st()
 
     /****************功能：开始录音，写入tempFile**************/
     audioRecorder->setAudioInput(ui->audioListCombox->currentText());
-    audioRecorder->setOutputLocation(QUrl::fromLocalFile(tempPath));
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
     audioRecorder->record();
     QTest::qWait(10000);//延时10s，限定录制时间
     audioRecorder->stop();
@@ -212,7 +209,7 @@ void Widget::TestFunc1st()
 
     /****************功能：分析tempFile**************/
     AudioFile<double> sourceFile;
-    sourceFile.load(tempPath.toStdString());
+    sourceFile.load(recordedAudioPath.toStdString());
     if ((din == NULL)||(out == NULL)){
         qDebug() << "Error:insufficient available memory" << endl;
     }
@@ -230,7 +227,7 @@ void Widget::TestFunc1st()
     QFile outputFile(outputPath);
     outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
     QTextStream outStream(&outputFile);
-    outStream.setCodec("UTF-8");``
+    outStream.setCodec("UTF-8");
     outStream << "Amplitude" << endl;
     for(int i=0; i<N; i++)
     {
@@ -250,17 +247,13 @@ void Widget::TestFunc2nd()
 //   audioPlayer->setVolume(30);
 //   audioPlayer->play();
 
-    playTestSound(0.01, 5000);
-    QTest::qWait(1000);
-    playTestSound(0.01, 8000);
-    QTest::qWait(1000);
-    playTestSound(0.01, 15000);
+    playTestSound(1, 5000);
 }
 
 void Widget::playTestSound(qreal volume, int duration)
 {
-    QFile testFile(testAudioPath);
-    testFile.open(QIODevice::ReadOnly);
+    QFile testAudioFile(testAudioPath);
+    testAudioFile.open(QIODevice::ReadOnly);
 
     QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
 //    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
@@ -269,13 +262,49 @@ void Widget::playTestSound(qreal volume, int duration)
 //    }
 //    else{
     QAudioOutput audioOutput(info, format, this);
-    audioOutput.start(&testFile);
+    audioOutput.start(&testAudioFile);
     audioOutput.setVolume(volume);
 //    qDebug()<< output.state();
 //    qDebug() << output.error();
-    QTest::qWait(duration);
+//    QTest::qWait(duration);
+    QEventLoop *loop = new QEventLoop;
+    connect(&testSoundDuration, &QTimer::timeout,
+            [=]()
+            {
+               loop->exit();
+//               qDebug() <<"exit";
+               testSoundDuration.stop();
+            }
+            );
+    testSoundDuration.start(duration);
+    loop->exec();
     audioOutput.stop();
-    testFile.close();
+//    qDebug()<<"stop";
+    testAudioFile.close();
+}
+
+void Widget::startRecord()
+{
+    /****************功能：新建/清空tempFile******************/
+    //若temp.wav已存在，录制前清空其之前的数据
+    //若不存在，会在程序所在目录下自动新建一个temp.wav
+    QFile tempFile(recordedAudioPath);
+    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
+    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
+    {
+    qDebug()<< "QFileOpenFail";
+    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
+    return;
+    }
+    tempFile.close();
+
+    /****************功能：开始录音，写入tempFile**************/
+    audioRecorder->setAudioInput(ui->audioListCombox->currentText());
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
+    audioRecorder->record();
+    QTest::qWait(10000);//延时10s，限定录制时间
+    audioRecorder->stop();
+//    qDebug()<<"录音结束";
 }
 
 void Widget::on_startButton_clicked()

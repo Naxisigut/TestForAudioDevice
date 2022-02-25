@@ -17,11 +17,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     main.cpp \
+    playTestAudioThread.cpp \
     widget.cpp
 
 HEADERS += \
     AudioFile.h \
     fftw/include/fftw3.h \
+    playTestAudioThread.h \
     widget.h
 
 FORMS += \
