@@ -10,15 +10,13 @@ Widget::Widget(QWidget *parent)
     ui->audioListCombox->addItems(audioRecorder->audioInputs());
     ui->audioListCombox->installEventFilter(this);
 
-    playTestAudioThread play;
-
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
         ui->outputListCombox->addItem(deviceInfo.deviceName());
     }
 
-    // Set up the format, eg.
+    // Set up the playTestAudio format, eg.
     format.setSampleRate(44100);
     format.setChannelCount(1);
     format.setSampleSize(16);
@@ -33,6 +31,8 @@ Widget::Widget(QWidget *parent)
     fftwPlan = fftw_plan_dft_1d(N, din, out, FFTW_FORWARD, FFTW_ESTIMATE);
     powOut = (double*)malloc(sizeof(double)*N);
     fOut = (double*)malloc(sizeof(double)*N);
+
+//    connect(playThread, &playTestAudioThread::isDone,)
 }
 
 Widget::~Widget()
@@ -247,12 +247,12 @@ void Widget::TestFunc2nd()
 //   audioPlayer->setVolume(30);
 //   audioPlayer->play();
 
-    playTestSound(1, 5000);
+//    playTestSound(1, 5000);
 }
 
 void Widget::playTestSound(qreal volume, int duration)
 {
-    QFile testAudioFile(testAudioPath);
+   /* QFile testAudioFile(testAudioPath);
     testAudioFile.open(QIODevice::ReadOnly);
 
     QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
@@ -280,7 +280,7 @@ void Widget::playTestSound(qreal volume, int duration)
     loop->exec();
     audioOutput.stop();
 //    qDebug()<<"stop";
-    testAudioFile.close();
+    testAudioFile.close();*/
 }
 
 void Widget::startRecord()
@@ -315,5 +315,7 @@ void Widget::on_startButton_clicked()
 
 void Widget::on_stopButton_clicked()
 {
-    TestFunc2nd();
+    QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
+    playThread = new playTestAudioThread(info, 1, 5000, this);
+    playThread->start();
 }

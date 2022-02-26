@@ -1,9 +1,25 @@
 #include "playTestAudioThread.h"
 
-playTestAudioThread::playTestAudioThread(QObject *parent) : QThread(parent)
+playTestAudioThread::playTestAudioThread(QAudioDeviceInfo info, qreal vol, int duration, QObject *parent) : QThread(parent)
 {
-        testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
+    testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
+    deviceInfo = info;
+    // Set up the format, eg.
+    format.setSampleRate(44100);
+    format.setChannelCount(1);
+    format.setSampleSize(16);
+    format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setSampleType(QAudioFormat::SignedInt);
+    volume = vol;
+    time = duration;
 
+
+}
+
+playTestAudioThread::~playTestAudioThread()
+{
+    delete loop;
 }
 
 void playTestAudioThread::run()
@@ -11,30 +27,29 @@ void playTestAudioThread::run()
     QFile testAudioFile(testAudioPath);
     testAudioFile.open(QIODevice::ReadOnly);
 
-    QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
-//    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
-//    if (info.isFormatSupported(format) != true){
-//        qDebug() << "Raw audio format not supported by backend, cannot play audio.";
-//    }
-//    else{
-    QAudioOutput audioOutput(info, format, this);
+    QAudioOutput audioOutput(deviceInfo, format);
     audioOutput.start(&testAudioFile);
     audioOutput.setVolume(volume);
+    QTimer testSoundDuration;
 //    qDebug()<< output.state();
 //    qDebug() << output.error();
 //    QTest::qWait(duration);
-    QEventLoop *loop = new QEventLoop;
+    loop = new QEventLoop;
     connect(&testSoundDuration, &QTimer::timeout,
-            [=]()
+            [&]()
             {
                loop->exit();
 //               qDebug() <<"exit";
                testSoundDuration.stop();
+               audioOutput.stop();
+               testAudioFile.close();
+               emit isDone();
             }
             );
-    testSoundDuration.start(duration);
+
+    testSoundDuration.start(time);
     loop->exec();
-    audioOutput.stop();
+
 //    qDebug()<<"stop";
-    testAudioFile.close();
+
 }

@@ -32,7 +32,7 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
-    QString testAudioPath;
+//    QString testAudioPath;
     QString recordedAudioPath;
     QAudioFormat format;
     QList<QAudioDeviceInfo> outputDeviceList;
@@ -40,7 +40,7 @@ public:
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
-    QTimer testSoundDuration;
+//    QTimer testSoundDuration;
 //    QMediaPlayer *audioPlayer;
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
@@ -50,6 +50,7 @@ public:
     void TestFunc2nd();
     void playTestSound(qreal volume, int duration);
     void startRecord();
+    playTestAudioThread *playThread;
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);

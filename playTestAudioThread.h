@@ -4,14 +4,24 @@
 #include <QApplication>
 #include <QFile>
 #include <QAudioDeviceInfo>
+#include <QAudioOutput>
+#include <QAudioFormat>
+#include <QTimer>
 
 class playTestAudioThread : public QThread
 {
+   Q_OBJECT
+
 public:
-    explicit playTestAudioThread(QObject *parent = nullptr);
+    explicit playTestAudioThread(QAudioDeviceInfo info, qreal vol, int duration, QObject *parent = nullptr);
     ~playTestAudioThread();
     QString testAudioPath;
-    QList<QAudioDeviceInfo> outputDeviceList;
+    QAudioDeviceInfo deviceInfo;
+    QAudioFormat format;
+    qreal volume;
+    int time;
+    QEventLoop *loop;
+
 
 protected:
     void run();
