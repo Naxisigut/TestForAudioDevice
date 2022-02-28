@@ -6,9 +6,28 @@ Widget::Widget(QWidget *parent)
     , ui(new Ui::Widget)
 {
     ui->setupUi(this);
-    audioRecorder = new QAudioRecorder;
-    ui->inputListCombox->addItems(audioRecorder->audioInputs());
+//    ui->inputListCombox->addItems(audioRecorder->audioInputs());
     ui->inputListCombox->installEventFilter(this);
+    ui->outputListCombox->installEventFilter(this);
+
+    tableModel = new QStandardItemModel;
+    ui->tableView->setModel(tableModel);
+    tableModel->setColumnCount(4);
+    tableModel->setHeaderData(0,Qt::Horizontal, "序号");
+    tableModel->setHeaderData(1,Qt::Horizontal, "测试项");
+    tableModel->setHeaderData(2,Qt::Horizontal, "THD");
+    tableModel->setHeaderData(3,Qt::Horizontal, "结果");
+    for(int i=0; i<4; i++){
+    tableModel->setItem(i,0,new QStandardItem(QString::number(i)));
+    }
+    ui->tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignHCenter);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    ui->tableView->setColumnWidth(0,100);
+    ui->tableView->setColumnWidth(1,200);
+    ui->tableView->setColumnWidth(2,100);
+    ui->tableView->setColumnWidth(3,100);
+    ui->tableView->verticalHeader()->setVisible(false);
+
 
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
@@ -31,6 +50,8 @@ Widget::Widget(QWidget *parent)
     format.setSampleType(QAudioFormat::SignedInt);
 
     recordedAudioPath = qApp->applicationDirPath().append("/temp.wav");
+
+    audioRecorder = new QAudioRecorder;
 
     din = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
     out = (fftw_complex*)fftw_malloc(sizeof (fftw_complex)* N);
@@ -56,6 +77,16 @@ bool Widget::eventFilter(QObject *obj, QEvent *e)
         foreach(QAudioDeviceInfo info, list)
         {
             ui->inputListCombox->addItem(info.deviceName());
+        }
+//        qDebug() << "press";
+        return QWidget::eventFilter(obj, e);//执行完上面的代码后，继续执行原有的功能
+    }else if((obj == ui->outputListCombox) && (e->type() == QEvent::MouseButtonPress))
+    {
+        ui->outputListCombox->clear();
+        QList<QAudioDeviceInfo> list =QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+        foreach(QAudioDeviceInfo info, list)
+        {
+            ui->outputListCombox->addItem(info.deviceName());
         }
 //        qDebug() << "press";
         return QWidget::eventFilter(obj, e);//执行完上面的代码后，继续执行原有的功能
@@ -102,6 +133,21 @@ double Widget::THDCalculate(double f, double sourcePowArr[])
     }
     double THD = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
     return THD;
+}
+
+int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
+{
+    for(int i=0; i<list.size(); i++)
+    {
+        if(list.at(i).deviceName().contains(str) == true)
+        {
+//            qDebug()<<"包含"<<i;
+            return i;
+        }else {
+//            qDebug()<<"不包含i"<<i;
+        }
+    }
+    return -1;
 }
 
 void Widget::TestFuncBase()
@@ -286,20 +332,7 @@ void Widget::startRecord(QString deviceName, int duration)
     //    qDebug()<<"录音结束";
 }
 
-int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
-{
-    for(int i=0; i<list.size(); i++)
-    {
-        if(list.at(i).deviceName().contains(str) == true)
-        {
-//            qDebug()<<"包含"<<i;
-            return i;
-        }else {
-//            qDebug()<<"不包含i"<<i;
-        }
-    }
-    return -1;
-}
+
 
 
 void Widget::on_startButton_clicked()

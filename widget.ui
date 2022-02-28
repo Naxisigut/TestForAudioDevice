@@ -36,16 +36,6 @@
     <string>Start</string>
    </property>
   </widget>
-  <widget class="QTableView" name="tableView">
-   <property name="geometry">
-    <rect>
-     <x>50</x>
-     <y>180</y>
-     <width>591</width>
-     <height>311</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="QPushButton" name="stopButton">
    <property name="geometry">
     <rect>
@@ -66,6 +56,16 @@
      <y>30</y>
      <width>221</width>
      <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QTableView" name="tableView">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>200</y>
+     <width>601</width>
+     <height>341</height>
     </rect>
    </property>
   </widget>

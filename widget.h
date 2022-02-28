@@ -14,6 +14,7 @@
 #include <QtMath>
 #include <QMediaPlayer>
 #include <QTimer>
+#include <QStandardItemModel>
 #include <fftw3.h>
 #include <AudioFile.h>
 #include <playTestAudioThread.h>
@@ -43,6 +44,7 @@ public:
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
     playTestAudioThread *playThread;
+    QStandardItemModel *tableModel;
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double THDCalculate(double f, double sourcePow[]);
