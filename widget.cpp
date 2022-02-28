@@ -7,13 +7,19 @@ Widget::Widget(QWidget *parent)
 {
     ui->setupUi(this);
     audioRecorder = new QAudioRecorder;
-    ui->audioListCombox->addItems(audioRecorder->audioInputs());
-    ui->audioListCombox->installEventFilter(this);
+    ui->inputListCombox->addItems(audioRecorder->audioInputs());
+    ui->inputListCombox->installEventFilter(this);
 
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
         ui->outputListCombox->addItem(deviceInfo.deviceName());
+    }
+
+    foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
+    {
+        inputDeviceList.append(deviceInfo);
+        ui->inputListCombox->addItem(deviceInfo.deviceName());
     }
 
     // Set up the playTestAudio format, eg.
@@ -43,13 +49,13 @@ Widget::~Widget()
 bool Widget::eventFilter(QObject *obj, QEvent *e)
 {
     /**********功能：点击audioListCombox时更新设备列表**********/
-    if((obj == ui->audioListCombox) && (e->type() == QEvent::MouseButtonPress))
+    if((obj == ui->inputListCombox) && (e->type() == QEvent::MouseButtonPress))
     {
-        ui->audioListCombox->clear();
+        ui->inputListCombox->clear();
         QList<QAudioDeviceInfo> list =QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
         foreach(QAudioDeviceInfo info, list)
         {
-            ui->audioListCombox->addItem(info.deviceName());
+            ui->inputListCombox->addItem(info.deviceName());
         }
 //        qDebug() << "press";
         return QWidget::eventFilter(obj, e);//执行完上面的代码后，继续执行原有的功能
@@ -121,7 +127,7 @@ void Widget::TestFuncBase()
 //    audioSettings.setSampleRate(48000);
 //    audioSettings.setChannelCount(2);
 
-    audioRecorder->setAudioInput(ui->audioListCombox->currentText());
+    audioRecorder->setAudioInput(ui->inputListCombox->currentText());
     audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
 //    audioRecorder->setAudioSettings(audioSettings);
     audioRecorder->record();
@@ -186,28 +192,11 @@ void Widget::TestFuncBase()
 
 void Widget::TestFunc1st()
 {
-    /****************功能：新建/清空tempFile******************/
-    //若temp.wav已存在，录制前清空其之前的数据
-    //若不存在，会在程序所在目录下自动新建一个temp.wav
-    QFile tempFile(recordedAudioPath);
-    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
-    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
-    {
-    qDebug()<< "QFileOpenFail";
-    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
-    return;
-    }
-    tempFile.close();
-
-    /****************功能：开始录音，写入tempFile**************/
-    audioRecorder->setAudioInput(ui->audioListCombox->currentText());
-    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
-    audioRecorder->record();
-    QTest::qWait(10000);//延时10s，限定录制时间
-    audioRecorder->stop();
+    playTestSound("JVC", 1, 5000);//播放测试音频，5s
+    startRecord("Real",10000);//开始录音
     qDebug()<<"录音结束";
 
-    /****************功能：分析tempFile**************/
+    /****************功能：执行FFT**************/
     AudioFile<double> sourceFile;
     sourceFile.load(recordedAudioPath.toStdString());
     if ((din == NULL)||(out == NULL)){
@@ -250,40 +239,23 @@ void Widget::TestFunc2nd()
 //    playTestSound(1, 5000);
 }
 
-void Widget::playTestSound(qreal volume, int duration)
+void Widget::playTestSound(QString deviceName, qreal volume, int duration)
 {
-   /* QFile testAudioFile(testAudioPath);
-    testAudioFile.open(QIODevice::ReadOnly);
-
-    QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
-//    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
-//    if (info.isFormatSupported(format) != true){
-//        qDebug() << "Raw audio format not supported by backend, cannot play audio.";
-//    }
-//    else{
-    QAudioOutput audioOutput(info, format, this);
-    audioOutput.start(&testAudioFile);
-    audioOutput.setVolume(volume);
-//    qDebug()<< output.state();
-//    qDebug() << output.error();
-//    QTest::qWait(duration);
-    QEventLoop *loop = new QEventLoop;
-    connect(&testSoundDuration, &QTimer::timeout,
-            [=]()
-            {
-               loop->exit();
-//               qDebug() <<"exit";
-               testSoundDuration.stop();
-            }
-            );
-    testSoundDuration.start(duration);
-    loop->exec();
-    audioOutput.stop();
-//    qDebug()<<"stop";
-    testAudioFile.close();*/
+    PlayThreadPara playPara;
+    int deviceIndex = searchDevice(deviceName, outputDeviceList);
+    if (deviceIndex != -1){
+        playPara.info = outputDeviceList.at(deviceIndex);
+    }else {
+        QMessageBox::information(this, "提示", "没有发现播放设备",QMessageBox::Ok);
+        return;
+    }
+    playPara.volume = volume;
+    playPara.duration = duration;
+    playThread = new playTestAudioThread(playPara, this);
+    playThread->start();
 }
 
-void Widget::startRecord()
+void Widget::startRecord(QString deviceName, int duration)
 {
     /****************功能：新建/清空tempFile******************/
     //若temp.wav已存在，录制前清空其之前的数据
@@ -299,23 +271,44 @@ void Widget::startRecord()
     tempFile.close();
 
     /****************功能：开始录音，写入tempFile**************/
-    audioRecorder->setAudioInput(ui->audioListCombox->currentText());
+    int deviceIndex = searchDevice(deviceName, inputDeviceList);
+    if (deviceIndex != -1){
+        QAudioDeviceInfo info = inputDeviceList.at(deviceIndex);
+    }else {
+        QMessageBox::information(this, "提示", "没有发现录音设备",QMessageBox::Ok);
+        return;
+    }
+    audioRecorder->setAudioInput(inputDeviceList.at(deviceIndex).deviceName());
     audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
     audioRecorder->record();
-    QTest::qWait(10000);//延时10s，限定录制时间
+    QTest::qWait(duration);//延时，单位为ms, 限定录制时间
     audioRecorder->stop();
-//    qDebug()<<"录音结束";
+    //    qDebug()<<"录音结束";
 }
+
+int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
+{
+    for(int i=0; i<list.size(); i++)
+    {
+        if(list.at(i).deviceName().contains(str) == true)
+        {
+//            qDebug()<<"包含"<<i;
+            return i;
+        }else {
+//            qDebug()<<"不包含i"<<i;
+        }
+    }
+    return -1;
+}
+
 
 void Widget::on_startButton_clicked()
 {
-    TestFunc1st();
+    //更新设备列表
 }
 
 
 void Widget::on_stopButton_clicked()
 {
-    QAudioDeviceInfo info = outputDeviceList.at(ui->outputListCombox->currentIndex());
-    playThread = new playTestAudioThread(info, 1, 5000, this);
-    playThread->start();
+startRecord("Real", 10000);
 }

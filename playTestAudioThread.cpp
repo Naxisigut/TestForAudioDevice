@@ -1,9 +1,10 @@
 #include "playTestAudioThread.h"
 
-playTestAudioThread::playTestAudioThread(QAudioDeviceInfo info, qreal vol, int duration, QObject *parent) : QThread(parent)
+playTestAudioThread::playTestAudioThread(PlayThreadPara para, QObject *parent) : QThread(parent)
 {
     testAudioPath = qApp->applicationDirPath().append("/1KHz.pcm");
-    deviceInfo = info;
+    parameter = para;
+//    deviceInfo = info;
     // Set up the format, eg.
     format.setSampleRate(44100);
     format.setChannelCount(1);
@@ -11,10 +12,6 @@ playTestAudioThread::playTestAudioThread(QAudioDeviceInfo info, qreal vol, int d
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
-    volume = vol;
-    time = duration;
-
-
 }
 
 playTestAudioThread::~playTestAudioThread()
@@ -27,9 +24,9 @@ void playTestAudioThread::run()
     QFile testAudioFile(testAudioPath);
     testAudioFile.open(QIODevice::ReadOnly);
 
-    QAudioOutput audioOutput(deviceInfo, format);
+    QAudioOutput audioOutput(parameter.info, format);
     audioOutput.start(&testAudioFile);
-    audioOutput.setVolume(volume);
+    audioOutput.setVolume(parameter.volume);
     QTimer testSoundDuration;
 //    qDebug()<< output.state();
 //    qDebug() << output.error();
@@ -47,7 +44,7 @@ void playTestAudioThread::run()
             }
             );
 
-    testSoundDuration.start(time);
+    testSoundDuration.start(parameter.duration);
     loop->exec();
 
 //    qDebug()<<"stop";

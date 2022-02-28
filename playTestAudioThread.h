@@ -7,19 +7,21 @@
 #include <QAudioOutput>
 #include <QAudioFormat>
 #include <QTimer>
+#include <playthreadpara.h>
 
 class playTestAudioThread : public QThread
 {
    Q_OBJECT
 
 public:
-    explicit playTestAudioThread(QAudioDeviceInfo info, qreal vol, int duration, QObject *parent = nullptr);
+    explicit playTestAudioThread(PlayThreadPara para, QObject *parent = nullptr);
     ~playTestAudioThread();
     QString testAudioPath;
-    QAudioDeviceInfo deviceInfo;
+    PlayThreadPara parameter;
     QAudioFormat format;
-    qreal volume;
-    int time;
+//    QAudioDeviceInfo deviceInfo;
+//    qreal volume;
+//    int time;
     QEventLoop *loop;
 
 

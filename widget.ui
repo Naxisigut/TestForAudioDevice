@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Widget</string>
   </property>
-  <widget class="QComboBox" name="audioListCombox">
+  <widget class="QComboBox" name="inputListCombox">
    <property name="geometry">
     <rect>
      <x>50</x>

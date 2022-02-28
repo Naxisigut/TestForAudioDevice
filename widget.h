@@ -19,7 +19,9 @@
 #include <playTestAudioThread.h>
 
 //#define N 131072
-#define N 8192
+#define N 32768
+
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -32,25 +34,26 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
-//    QString testAudioPath;
     QString recordedAudioPath;
     QAudioFormat format;
     QList<QAudioDeviceInfo> outputDeviceList;
+    QList<QAudioDeviceInfo> inputDeviceList;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
-//    QTimer testSoundDuration;
-//    QMediaPlayer *audioPlayer;
+    playTestAudioThread *playThread;
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double THDCalculate(double f, double sourcePow[]);
     void TestFuncBase();
     void TestFunc1st();
     void TestFunc2nd();
-    void playTestSound(qreal volume, int duration);
-    void startRecord();
-    playTestAudioThread *playThread;
+    void playTestSound(QString deviceName, qreal volume, int duration);
+    void startRecord(QString deviceName, int duration);
+    int searchDevice(QString str, QList<QAudioDeviceInfo> &list);
+
+
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);
