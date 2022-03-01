@@ -15,6 +15,8 @@
 #include <QMediaPlayer>
 #include <QTimer>
 #include <QStandardItemModel>
+#include <QSerialPort>
+#include <QSerialPortInfo>
 #include <fftw3.h>
 #include <AudioFile.h>
 #include <playTestAudioThread.h>
@@ -39,12 +41,15 @@ public:
     QAudioFormat format;
     QList<QAudioDeviceInfo> outputDeviceList;
     QList<QAudioDeviceInfo> inputDeviceList;
+    QList<QSerialPortInfo> portInfoList;
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
     playTestAudioThread *playThread;
     QStandardItemModel *tableModel;
+    QSerialPort *portAR720;
+
     double FindMaxInArray(double arr[],int cnt);
     void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double THDCalculate(double f, double sourcePow[]);
@@ -54,6 +59,7 @@ public:
     void playTestSound(QString deviceName, qreal volume, int duration);
     void startRecord(QString deviceName, int duration);
     int searchDevice(QString str, QList<QAudioDeviceInfo> &list);
+    void receiveInfo();
 
 
 

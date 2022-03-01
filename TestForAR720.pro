@@ -33,7 +33,8 @@ FORMS += \
 
 QT += \
     multimedia \
-    testlib
+    testlib \
+    serialport
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

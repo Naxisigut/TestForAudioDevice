@@ -18,14 +18,30 @@ Widget::Widget(QWidget *parent)
     tableModel->setHeaderData(2,Qt::Horizontal, "THD");
     tableModel->setHeaderData(3,Qt::Horizontal, "结果");
     for(int i=0; i<4; i++){
-    tableModel->setItem(i,0,new QStandardItem(QString::number(i)));
+        for(int j=0; j<4; j++){
+            tableModel->setItem(i,j,new QStandardItem);
+            tableModel->item(i, j)->setTextAlignment(Qt::AlignHCenter);
+        }
     }
+    for(int i=0; i<4; i++){
+        tableModel->item(i, 0)->setText(QString::number(i+1));
+    }
+    for(int i=0; i<4; i++){
+        tableModel->item(i,1)->setTextAlignment(Qt::AlignLeft);
+    }
+    tableModel->item(0, 1)->setText("声卡输出 ->720 USB Mic");
+    tableModel->item(1, 1)->setText("720 USB Speaker ->声卡输入");
+    tableModel->item(2, 1)->setText("声卡输出 ->蓝牙模块 ->720 Speaker ->声卡输入");
     ui->tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignHCenter);
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    ui->tableView->setColumnWidth(0,100);
-    ui->tableView->setColumnWidth(1,200);
-    ui->tableView->setColumnWidth(2,100);
-    ui->tableView->setColumnWidth(3,100);
+    ui->tableView->setColumnWidth(0,30);
+    ui->tableView->setColumnWidth(1,300);
+    ui->tableView->setColumnWidth(2,50);
+    ui->tableView->setColumnWidth(3,50);
+    ui->tableView->setRowHeight(0,20);
+    ui->tableView->setRowHeight(1,20);
+    ui->tableView->setRowHeight(2,20);
+    ui->tableView->setRowHeight(3,20);
     ui->tableView->verticalHeader()->setVisible(false);
 
 
@@ -34,11 +50,31 @@ Widget::Widget(QWidget *parent)
         outputDeviceList.append(deviceInfo);
         ui->outputListCombox->addItem(deviceInfo.deviceName());
     }
-
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
     {
         inputDeviceList.append(deviceInfo);
         ui->inputListCombox->addItem(deviceInfo.deviceName());
+    }
+    foreach(const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts())
+    {
+        portInfoList.append(portInfo);
+        ui->portListCombox->addItem(portInfo.portName());
+    }
+    foreach(const QSerialPortInfo &portInfo, portInfoList)
+    {
+        if(portInfo.vendorIdentifier() == 0x2207 && portInfo.productIdentifier() == 0x0111){
+            portAR720 = new QSerialPort(portInfo);
+            portAR720->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections);//设置波特率和读写方向
+            portAR720->setDataBits(QSerialPort::Data8);		//数据位为8位
+            portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
+            portAR720->setParity(QSerialPort::NoParity);	//无校验位
+            portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
+            qDebug() << portAR720->portName();
+            if(portAR720->isOpen() == true){
+                portAR720->close();
+                qDebug() << "close";
+            }
+        }
     }
 
     // Set up the playTestAudio format, eg.
@@ -59,7 +95,7 @@ Widget::Widget(QWidget *parent)
     powOut = (double*)malloc(sizeof(double)*N);
     fOut = (double*)malloc(sizeof(double)*N);
 
-//    connect(playThread, &playTestAudioThread::isDone,)
+    connect(portAR720,&QIODevice::readyRead,this, &Widget::receiveInfo);
 }
 
 Widget::~Widget()
@@ -148,6 +184,11 @@ int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
         }
     }
     return -1;
+}
+
+void Widget::receiveInfo()
+{
+    qDebug() << "收到";
 }
 
 void Widget::TestFuncBase()
@@ -338,10 +379,42 @@ void Widget::startRecord(QString deviceName, int duration)
 void Widget::on_startButton_clicked()
 {
     //更新设备列表
+
+    if(portAR720->isOpen() == 1){
+        qDebug() << "已打开";}else
+    if(portAR720->open(QIODevice::ReadWrite) == false)//用ReadWrite 的模式尝试打开串口
+    {
+        qDebug()<<portAR720->portName()<<"打开失败!";
+        return;
+    }else {
+        qDebug() << "打开成功";
+    }
+    portAR720->write("cmd_switch_to_usb");
+    qDebug() << "write USB";
 }
 
 
 void Widget::on_stopButton_clicked()
 {
-startRecord("Real", 10000);
+
+    if(portAR720->isOpen() == 1){
+        qDebug() << "已打开";}else
+    if(portAR720->open(QIODevice::ReadWrite) == false)//用ReadWrite 的模式尝试打开串口
+    {
+        qDebug()<<portAR720->portName()<<"打开失败!";
+        return;
+    }else {
+        qDebug() << "打开成功";
+    }
+
+//    portAR720->write("cmd_switch_to_bt",99999);
+//    qDebug() << "write BT";
+     char BT_CMD[17]= "cmd_switch_to_bt";
+
+    for(int i=0; i<31; ++i)
+            {
+                printf("0x%x\n", BT_CMD[i]);
+            }
+            portAR720->write(BT_CMD,17);
+
 }

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>585</width>
+    <height>415</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QComboBox" name="inputListCombox">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>30</y>
+     <x>30</x>
+     <y>20</y>
      <width>211</width>
      <height>21</height>
     </rect>
@@ -26,8 +26,8 @@
   <widget class="QPushButton" name="startButton">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>140</y>
+     <x>80</x>
+     <y>50</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -39,8 +39,8 @@
   <widget class="QPushButton" name="stopButton">
    <property name="geometry">
     <rect>
-     <x>550</x>
-     <y>140</y>
+     <x>430</x>
+     <y>50</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -52,8 +52,8 @@
   <widget class="QComboBox" name="outputListCombox">
    <property name="geometry">
     <rect>
-     <x>420</x>
-     <y>30</y>
+     <x>330</x>
+     <y>20</y>
      <width>221</width>
      <height>22</height>
     </rect>
@@ -62,10 +62,26 @@
   <widget class="QTableView" name="tableView">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>200</y>
-     <width>601</width>
-     <height>341</height>
+     <x>80</x>
+     <y>90</y>
+     <width>435</width>
+     <height>231</height>
+    </rect>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>435</width>
+     <height>0</height>
+    </size>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="portListCombox">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>360</y>
+     <width>69</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
