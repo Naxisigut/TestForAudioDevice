@@ -49,17 +49,24 @@ public:
     playTestAudioThread *playThread;
     QStandardItemModel *tableModel;
     QSerialPort *portAR720;
+    const char *BT_CMD = "cmd_switch_to_bt\n";
+    const char *USB_CMD = "cmd_switch_to_usb\n";
+    const char *Master_CMD = "close_master_mic\n";
+    const char *Deputy_CMD = "close_deputy_mic\n";
 
-    double FindMaxInArray(double arr[],int cnt);
-    void getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
-    double THDCalculate(double f, double sourcePow[]);
-    void TestFuncBase();
-    void TestFunc1st();
-    void TestFunc2nd();
-    void playTestSound(QString deviceName, qreal volume, int duration);
-    void startRecord(QString deviceName, int duration);
-    int searchDevice(QString str, QList<QAudioDeviceInfo> &list);
-    void receiveInfo();
+    double  FindMaxInArray(double arr[],int cnt);
+    void    getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
+    double  THDCalculate(double f, double sourcePow[]);
+    void    TestFuncBase();
+    void    TestFunc1st();
+    void    TestFunc2nd();
+    void    playTestSound(QString deviceName, qreal volume, int duration);
+    void    startRecord(QString deviceName, int duration);
+    int     searchDevice(QString str, QList<QAudioDeviceInfo> &list);
+    void    receiveInfo();
+    bool    openSerialPort();
+    void    switchBT();
+    void    switchUSB();
 
 
 

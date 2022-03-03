@@ -60,22 +60,7 @@ Widget::Widget(QWidget *parent)
         portInfoList.append(portInfo);
         ui->portListCombox->addItem(portInfo.portName());
     }
-    foreach(const QSerialPortInfo &portInfo, portInfoList)
-    {
-        if(portInfo.vendorIdentifier() == 0x2207 && portInfo.productIdentifier() == 0x0111){
-            portAR720 = new QSerialPort(portInfo);
-            portAR720->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections);//设置波特率和读写方向
-            portAR720->setDataBits(QSerialPort::Data8);		//数据位为8位
-            portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
-            portAR720->setParity(QSerialPort::NoParity);	//无校验位
-            portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
-            qDebug() << portAR720->portName();
-            if(portAR720->isOpen() == true){
-                portAR720->close();
-                qDebug() << "close";
-            }
-        }
-    }
+
 
     // Set up the playTestAudio format, eg.
     format.setSampleRate(44100);
@@ -95,12 +80,15 @@ Widget::Widget(QWidget *parent)
     powOut = (double*)malloc(sizeof(double)*N);
     fOut = (double*)malloc(sizeof(double)*N);
 
+    portAR720 = new QSerialPort();
     connect(portAR720,&QIODevice::readyRead,this, &Widget::receiveInfo);
 }
 
 Widget::~Widget()
 {
     delete ui;
+    portAR720->close();
+    delete portAR720;
 }
 
 bool Widget::eventFilter(QObject *obj, QEvent *e)
@@ -188,7 +176,62 @@ int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
 
 void Widget::receiveInfo()
 {
-    qDebug() << "收到";
+    QByteArray info = portAR720->readAll();
+    qDebug() << "收到"<< info;
+}
+
+bool Widget::openSerialPort()
+{
+    bool isFound = false;
+    foreach(const QSerialPortInfo &portInfo, portInfoList)
+    {
+        if(portInfo.vendorIdentifier() == 0x2207 && portInfo.productIdentifier() == 0x0111)
+        {
+            portAR720 = new QSerialPort(portInfo);
+            portAR720->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections);//设置波特率和读写方向
+            portAR720->setDataBits(QSerialPort::Data8);		//数据位为8位
+            portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
+            portAR720->setParity(QSerialPort::NoParity);	//无校验位
+            portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
+//            qDebug() << portAR720->portName();
+            if(portAR720->isOpen() == true)
+            {
+                portAR720->close();
+            }
+            isFound = true;
+        }
+    }
+    if(isFound == false)
+    {
+        QMessageBox::information(this, "提示", "没有发现串口",QMessageBox::Ok);
+        return 0;
+    }else
+    {
+        if(portAR720->open(QIODevice::ReadWrite) == true)
+        {
+            return 1;
+        }else
+        {
+            QMessageBox::information(this, "提示", "打开串口失败",QMessageBox::Ok);
+            return 0;
+        };
+    }
+}
+
+void Widget::switchBT()
+{
+    if(portAR720->isOpen() != true)
+    {
+        QMessageBox::information(this, "提示", "串口关闭",QMessageBox::Ok);
+    }else
+    {
+        portAR720->write(BT_CMD);
+    }
+}
+
+void Widget::switchUSB()
+{
+
 }
 
 void Widget::TestFuncBase()
@@ -380,41 +423,15 @@ void Widget::on_startButton_clicked()
 {
     //更新设备列表
 
-    if(portAR720->isOpen() == 1){
-        qDebug() << "已打开";}else
-    if(portAR720->open(QIODevice::ReadWrite) == false)//用ReadWrite 的模式尝试打开串口
-    {
-        qDebug()<<portAR720->portName()<<"打开失败!";
-        return;
-    }else {
-        qDebug() << "打开成功";
-    }
-    portAR720->write("cmd_switch_to_usb");
-    qDebug() << "write USB";
+switchBT();
 }
 
 
 void Widget::on_stopButton_clicked()
 {
 
-    if(portAR720->isOpen() == 1){
-        qDebug() << "已打开";}else
-    if(portAR720->open(QIODevice::ReadWrite) == false)//用ReadWrite 的模式尝试打开串口
-    {
-        qDebug()<<portAR720->portName()<<"打开失败!";
-        return;
-    }else {
-        qDebug() << "打开成功";
-    }
+openSerialPort();
+switchBT();
 
-//    portAR720->write("cmd_switch_to_bt",99999);
-//    qDebug() << "write BT";
-     char BT_CMD[17]= "cmd_switch_to_bt";
-
-    for(int i=0; i<31; ++i)
-            {
-                printf("0x%x\n", BT_CMD[i]);
-            }
-            portAR720->write(BT_CMD,17);
 
 }
