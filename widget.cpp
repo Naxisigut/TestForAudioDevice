@@ -1,6 +1,14 @@
 #include "widget.h"
 #include "ui_widget.h"
 
+enum Mode_ENUM {AR720_SwitchToBT =1,
+                AR720_SwitchToUSB,
+               }Mode;
+enum Channel_ENUM{N76E885_SwitchToBT=1,
+                  N76E885_SwitchToUSB,}Channel;
+enum SerialPort_ENUM{AR720_SerialPort =1,
+                     USBTo485_Converter_SerialPort}SerialPort_Index;
+
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
@@ -61,7 +69,6 @@ Widget::Widget(QWidget *parent)
         ui->portListCombox->addItem(portInfo.portName());
     }
 
-
     // Set up the playTestAudio format, eg.
     format.setSampleRate(44100);
     format.setChannelCount(1);
@@ -80,15 +87,20 @@ Widget::Widget(QWidget *parent)
     powOut = (double*)malloc(sizeof(double)*N);
     fOut = (double*)malloc(sizeof(double)*N);
 
-    portAR720 = new QSerialPort();
-    connect(portAR720,&QIODevice::readyRead,this, &Widget::receiveInfo);
+    portAR720 = NULL;
+    portConverter = NULL;
+
 }
 
 Widget::~Widget()
 {
     delete ui;
-    portAR720->close();
+    if (portAR720 != NULL)
+    {portAR720->close();}
     delete portAR720;
+    if (portConverter != NULL)
+    {portConverter->close();}
+    delete portConverter;
 }
 
 bool Widget::eventFilter(QObject *obj, QEvent *e)
@@ -119,14 +131,270 @@ bool Widget::eventFilter(QObject *obj, QEvent *e)
     }
 }
 
+
+/**************************************************************************************/
+/************************************串口与模式切换**************************************/
+/**************************************************************************************/
+
+bool Widget::openSerialPort(int SerialPortIndex)
+{
+    bool isFound = false;
+
+    switch (SerialPortIndex) {
+    case AR720_SerialPort:
+        foreach(const QSerialPortInfo &portInfo, portInfoList)
+        {
+            if(portInfo.vendorIdentifier() == 0x2207 && portInfo.productIdentifier() == 0x0111)
+            {
+                portAR720 = new QSerialPort(portInfo);
+                connect(portAR720,&QIODevice::readyRead,this, &Widget::receiveAR720Info);
+                portAR720->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections);//设置波特率和读写方向
+                portAR720->setDataBits(QSerialPort::Data8);		//数据位为8位
+                portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
+                portAR720->setParity(QSerialPort::NoParity);	//无校验位
+                portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
+                qDebug() << portAR720->portName();
+                if(portAR720->isOpen() == true){portAR720->close();}
+                isFound = true;
+            }
+        }
+        break;
+    case USBTo485_Converter_SerialPort:
+        foreach(const QSerialPortInfo &portInfo, portInfoList)
+        {
+            if(portInfo.vendorIdentifier() == 0x0403 && portInfo.productIdentifier() == 0x6001)
+            {
+                portConverter = new QSerialPort(portInfo);
+                connect(portConverter,&QIODevice::readyRead,this, &Widget::receiveConverterInfo);
+                portConverter->setBaudRate(QSerialPort::Baud9600,QSerialPort::AllDirections);//设置波特率和读写方向
+                portConverter->setDataBits(QSerialPort::Data8);		//数据位为8位
+                portConverter->setFlowControl(QSerialPort::NoFlowControl);//无流控制
+                portConverter->setParity(QSerialPort::NoParity);	//无校验位
+                portConverter->setStopBits(QSerialPort::OneStop); //一位停止位
+                qDebug() << portConverter->portName();
+                if(portConverter->isOpen() == true){portConverter->close();}
+                isFound = true;
+            }
+        }
+        break;
+    default:
+        break;
+    }
+
+    if(isFound == false)
+    {
+        QMessageBox::information(this, "提示", "没有发现串口",QMessageBox::Ok);
+        return 0;
+    }
+
+    switch (SerialPortIndex) {
+    case AR720_SerialPort:
+        if(portAR720->open(QIODevice::ReadWrite) == true)
+        {return 1;}
+        else
+        {
+            QMessageBox::information(this, "提示", "打开720串口失败",QMessageBox::Ok);
+            return 0;
+        }
+        break;
+    case USBTo485_Converter_SerialPort:
+        if(portConverter->open(QIODevice::ReadWrite) == true)
+        {return 1;}
+        else
+        {
+            QMessageBox::information(this, "提示", "打开converter串口失败",QMessageBox::Ok);
+            return 0;
+        }
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
+char Widget::convertCharToHex(char ch)
+{
+    if((ch >= '0') && (ch <= '9'))
+        return ch-0x30;
+    else if((ch >= 'A') && (ch <= 'F'))
+        return ch-'A'+10;
+    else if((ch >= 'a') && (ch <= 'f'))
+        return ch-'a'+10;
+    else return (-1);
+}
+
+void Widget::QStringToHex(const QString &str, QByteArray &bytedata)
+{
+    int hexdata,lowhexdata;
+    int hexdatalen = 0;
+    int len = str.length();
+    bytedata.resize(len/2);
+    char lstr,hstr;
+    for(int i=0; i<len; )
+    {
+        //char lstr,
+        hstr=str[i].toLatin1();
+        if(hstr == ' ')
+        {
+            i++;
+            continue;
+        }
+        i++;
+        if(i >= len)
+            break;
+        lstr = str[i].toLatin1();
+        hexdata = convertCharToHex(hstr);
+        lowhexdata = convertCharToHex(lstr);
+        if((hexdata == 16) || (lowhexdata == 16))
+            break;
+        else
+            hexdata = hexdata*16+lowhexdata;
+        i++;
+        bytedata[hexdatalen] = (char)hexdata;
+        hexdatalen++;
+    }
+    bytedata.resize(hexdatalen);
+}
+
+void Widget::receiveAR720Info()
+{
+
+    QByteArray info = portAR720->readAll();
+    qDebug() << "read:" <<info;
+    ui->textEdit->append(info);
+
+}
+
+void Widget::receiveConverterInfo()
+{
+    QByteArray info = portConverter->readAll();
+    qDebug()<< "read:" <<info;
+    ui->textEdit->append(QString(info.toHex()));
+}
+
+void Widget::switchMode(int Mode)
+{
+    if(portAR720->isOpen() != true)//ooooo考虑发现串口关闭后 应当停止测试
+    {
+        QMessageBox::information(this, "提示", "720串口关闭",QMessageBox::Ok);
+        return;
+    }
+
+    switch (Mode) {
+    case AR720_SwitchToBT:
+        portAR720->write(BT_CMD);
+        break;
+    case AR720_SwitchToUSB:
+        portAR720->write(USB_CMD);
+        break;
+    }
+}
+
+void Widget::switchChannel(int Channel)
+{
+    if(portConverter->isOpen() != true)//ooooo考虑发现串口关闭后 应当停止测试
+    {
+        QMessageBox::information(this, "提示", "converter串口关闭",QMessageBox::Ok);
+        return;
+    }
+    QByteArray sendBuf;
+    switch (Channel)
+    {
+    case N76E885_SwitchToBT:
+        QStringToHex(ToBTChannel_CMD, sendBuf); //把QString转换为hex
+        portConverter->write(sendBuf);
+        break;
+    case N76E885_SwitchToUSB:
+        QStringToHex(ToUSBChannel_CMD, sendBuf); //把QString转换为hex
+        portConverter->write(sendBuf);
+        break;
+    }
+}
+
+
+
+/**************************************************************************************/
+/************************************音频播放与录制**************************************/
+/**************************************************************************************/
+
+int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
+{
+    for(int i=0; i<list.size(); i++)
+    {
+        if(list.at(i).deviceName().contains(str) == true)
+        {
+//            qDebug()<<"包含"<<i;
+            return i;
+        }
+//        else {
+//            qDebug()<<"不包含i"<<i;
+//        }
+    }
+    return -1;//搜索不到设备时，返回-1
+}
+
+void Widget::playTestSound(QString deviceName, qreal volume, int duration)
+{
+    PlayThreadPara playPara;
+    int deviceIndex = searchDevice(deviceName, outputDeviceList);
+    if (deviceIndex != -1){
+        playPara.info = outputDeviceList.at(deviceIndex);
+    }else {
+        QMessageBox::information(this, "提示", "没有发现播放设备",QMessageBox::Ok);
+        return;
+    }
+    playPara.volume = volume;
+    playPara.duration = duration;
+    playThread = new playTestAudioThread(playPara, this);
+    playThread->start();
+}
+
+void Widget::startRecord(QString deviceName, int duration)
+{
+    /****************功能：新建/清空tempFile******************/
+    //若temp.wav已存在，录制前清空其之前的数据
+    //若不存在，会在程序所在目录下自动新建一个temp.wav
+    QFile tempFile(recordedAudioPath);
+    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
+    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
+    {
+    qDebug()<< "QFileOpenFail";
+    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
+    return;
+    }
+    tempFile.close();
+
+    /****************功能：开始录音，写入tempFile**************/
+    int deviceIndex = searchDevice(deviceName, inputDeviceList);
+    if (deviceIndex != -1){
+        QAudioDeviceInfo info = inputDeviceList.at(deviceIndex);
+    }else {
+        QMessageBox::information(this, "提示", "没有发现录音设备",QMessageBox::Ok);
+        return;
+    }
+    audioRecorder->setAudioInput(inputDeviceList.at(deviceIndex).deviceName());
+    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
+    audioRecorder->record();
+    QTest::qWait(duration);//延时，单位为ms, 限定录制时间
+    audioRecorder->stop();
+    //    qDebug()<<"录音结束";
+}
+
+
+
+
+
+/**************************************************************************************/
+/***********************************测试数据分析与输出************************************/
+/**************************************************************************************/
+
 double Widget::FindMaxInArray(double arr[],int cnt)
 {
     double max = arr[0];
     for (int i=1;i<cnt;i++)
     {
         max = (max<arr[i]?arr[i]:max);
-//        qDebug()<<i<<max;
-    };
+    }
     return max;
 }
 
@@ -159,80 +427,10 @@ double Widget::THDCalculate(double f, double sourcePowArr[])
     return THD;
 }
 
-int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
-{
-    for(int i=0; i<list.size(); i++)
-    {
-        if(list.at(i).deviceName().contains(str) == true)
-        {
-//            qDebug()<<"包含"<<i;
-            return i;
-        }else {
-//            qDebug()<<"不包含i"<<i;
-        }
-    }
-    return -1;
-}
 
-void Widget::receiveInfo()
-{
-    QByteArray info = portAR720->readAll();
-    qDebug() << "收到"<< info;
-}
-
-bool Widget::openSerialPort()
-{
-    bool isFound = false;
-    foreach(const QSerialPortInfo &portInfo, portInfoList)
-    {
-        if(portInfo.vendorIdentifier() == 0x2207 && portInfo.productIdentifier() == 0x0111)
-        {
-            portAR720 = new QSerialPort(portInfo);
-            portAR720->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections);//设置波特率和读写方向
-            portAR720->setDataBits(QSerialPort::Data8);		//数据位为8位
-            portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
-            portAR720->setParity(QSerialPort::NoParity);	//无校验位
-            portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
-//            qDebug() << portAR720->portName();
-            if(portAR720->isOpen() == true)
-            {
-                portAR720->close();
-            }
-            isFound = true;
-        }
-    }
-    if(isFound == false)
-    {
-        QMessageBox::information(this, "提示", "没有发现串口",QMessageBox::Ok);
-        return 0;
-    }else
-    {
-        if(portAR720->open(QIODevice::ReadWrite) == true)
-        {
-            return 1;
-        }else
-        {
-            QMessageBox::information(this, "提示", "打开串口失败",QMessageBox::Ok);
-            return 0;
-        };
-    }
-}
-
-void Widget::switchBT()
-{
-    if(portAR720->isOpen() != true)
-    {
-        QMessageBox::information(this, "提示", "串口关闭",QMessageBox::Ok);
-    }else
-    {
-        portAR720->write(BT_CMD);
-    }
-}
-
-void Widget::switchUSB()
-{
-
-}
+/**************************************************************************************/
+/***************************************测试模块****************************************/
+/**************************************************************************************/
 
 void Widget::TestFuncBase()
 {
@@ -369,69 +567,28 @@ void Widget::TestFunc2nd()
 //    playTestSound(1, 5000);
 }
 
-void Widget::playTestSound(QString deviceName, qreal volume, int duration)
-{
-    PlayThreadPara playPara;
-    int deviceIndex = searchDevice(deviceName, outputDeviceList);
-    if (deviceIndex != -1){
-        playPara.info = outputDeviceList.at(deviceIndex);
-    }else {
-        QMessageBox::information(this, "提示", "没有发现播放设备",QMessageBox::Ok);
-        return;
-    }
-    playPara.volume = volume;
-    playPara.duration = duration;
-    playThread = new playTestAudioThread(playPara, this);
-    playThread->start();
-}
-
-void Widget::startRecord(QString deviceName, int duration)
-{
-    /****************功能：新建/清空tempFile******************/
-    //若temp.wav已存在，录制前清空其之前的数据
-    //若不存在，会在程序所在目录下自动新建一个temp.wav
-    QFile tempFile(recordedAudioPath);
-    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
-    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
-    {
-    qDebug()<< "QFileOpenFail";
-    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
-    return;
-    }
-    tempFile.close();
-
-    /****************功能：开始录音，写入tempFile**************/
-    int deviceIndex = searchDevice(deviceName, inputDeviceList);
-    if (deviceIndex != -1){
-        QAudioDeviceInfo info = inputDeviceList.at(deviceIndex);
-    }else {
-        QMessageBox::information(this, "提示", "没有发现录音设备",QMessageBox::Ok);
-        return;
-    }
-    audioRecorder->setAudioInput(inputDeviceList.at(deviceIndex).deviceName());
-    audioRecorder->setOutputLocation(QUrl::fromLocalFile(recordedAudioPath));
-    audioRecorder->record();
-    QTest::qWait(duration);//延时，单位为ms, 限定录制时间
-    audioRecorder->stop();
-    //    qDebug()<<"录音结束";
-}
 
 
-
+/**************************************************************************************/
+/*****************************************按键******************************************/
+/**************************************************************************************/
 
 void Widget::on_startButton_clicked()
 {
     //更新设备列表
 
-switchBT();
+    if(portAR720 == NULL)
+    {openSerialPort(AR720_SerialPort);}
+    switchMode(AR720_SwitchToUSB);
 }
-
 
 void Widget::on_stopButton_clicked()
-{
-
-openSerialPort();
-switchBT();
-
+  {
+if(portConverter == NULL){openSerialPort(USBTo485_Converter_SerialPort);}
+switchChannel(N76E885_SwitchToUSB);
 
 }
+
+
+
+

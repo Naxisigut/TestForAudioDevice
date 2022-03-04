@@ -24,8 +24,6 @@
 //#define N 131072
 #define N 32768
 
-
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
 QT_END_NAMESPACE
@@ -37,41 +35,57 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
+    QStandardItemModel *tableModel;
+
+
+    QSerialPort *portAR720;
+    QSerialPort *portConverter;
+    QList<QSerialPortInfo> portInfoList;
+    bool    openSerialPort(int SerialPortIndex);
+    char    convertCharToHex(char ch);
+    void    QStringToHex(const QString &str, QByteArray &bytedata);
+    void    receiveAR720Info();
+    void    receiveConverterInfo();
+    void    switchMode(int Mode);
+    void    switchChannel(int Channel);
+//    QByteArray QstringToHex(const QString);
+
+
     QString recordedAudioPath;
+    QAudioRecorder *audioRecorder;
     QAudioFormat format;
     QList<QAudioDeviceInfo> outputDeviceList;
     QList<QAudioDeviceInfo> inputDeviceList;
-    QList<QSerialPortInfo> portInfoList;
+    playTestAudioThread *playThread;
+    int     searchDevice(QString str, QList<QAudioDeviceInfo> &list);
+    void    playTestSound(QString deviceName, qreal volume, int duration);
+    void    startRecord(QString deviceName, int duration);
+
+
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
-    QAudioRecorder *audioRecorder;
     double *powOut,*fOut;
-    playTestAudioThread *playThread;
-    QStandardItemModel *tableModel;
-    QSerialPort *portAR720;
-    const char *BT_CMD = "cmd_switch_to_bt\n";
-    const char *USB_CMD = "cmd_switch_to_usb\n";
-    const char *Master_CMD = "close_master_mic\n";
-    const char *Deputy_CMD = "close_deputy_mic\n";
-
     double  FindMaxInArray(double arr[],int cnt);
     void    getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double  THDCalculate(double f, double sourcePow[]);
+
+
     void    TestFuncBase();
     void    TestFunc1st();
     void    TestFunc2nd();
-    void    playTestSound(QString deviceName, qreal volume, int duration);
-    void    startRecord(QString deviceName, int duration);
-    int     searchDevice(QString str, QList<QAudioDeviceInfo> &list);
-    void    receiveInfo();
-    bool    openSerialPort();
-    void    switchBT();
-    void    switchUSB();
-
-
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);
+
+private:
+    QByteArray BT_CMD = "cmd_switch_to_bt\n";
+    QByteArray USB_CMD = "cmd_switch_to_usb\n";
+    QByteArray Master_CMD = "close_master_mic\n";
+    QByteArray Deputy_CMD = "close_deputy_mic\n";
+    QString ToBTChannel_CMD = "AA 01 01 01 02 01 00 00";
+    QString BTReply_CMD = "AA 01 01 01 02 01 B5 4D";
+    QString ToUSBChannel_CMD = "AA 01 01 01 02 02 00 00";
+    QString USBReply_CMD = "AA 01 01 01 02 02 F5 4C";
 
 private slots:
     void on_startButton_clicked();
