@@ -37,7 +37,9 @@ public:
     ~Widget();
     QStandardItemModel *tableModel;
 
-
+    /**************************************************************************************/
+    /************************************串口与模式切换**************************************/
+    /**************************************************************************************/
     QSerialPort *portAR720;
     QSerialPort *portConverter;
     QList<QSerialPortInfo> portInfoList;
@@ -50,7 +52,9 @@ public:
     void    switchChannel(int Channel);
 //    QByteArray QstringToHex(const QString);
 
-
+    /**************************************************************************************/
+    /************************************音频播放与录制**************************************/
+    /**************************************************************************************/
     QString recordedAudioPath;
     QAudioRecorder *audioRecorder;
     QAudioFormat format;
@@ -59,9 +63,11 @@ public:
     playTestAudioThread *playThread;
     int     searchDevice(QString str, QList<QAudioDeviceInfo> &list);
     void    playTestSound(QString deviceName, qreal volume, int duration);
-    void    startRecord(QString deviceName, int duration);
+    void    startRecord(QString deviceName, int duration, int testItemIndex);
 
-
+    /**************************************************************************************/
+    /***********************************测试数据分析与输出************************************/
+    /**************************************************************************************/
     fftw_complex *din,*out;
     fftw_plan fftwPlan;
     double *powOut,*fOut;
@@ -69,9 +75,11 @@ public:
     void    getPowArrayAtFrequency(double f, double arr[], int cnt, double sourceArr[]);
     double  THDCalculate(double f, double sourcePow[]);
 
-
+    /**************************************************************************************/
+    /***************************************测试模块****************************************/
+    /**************************************************************************************/
     void    TestFuncBase();
-    void    TestFunc1st();
+    void    TestFunc(int testItemIndex);
     void    TestFunc2nd();
 
 protected:

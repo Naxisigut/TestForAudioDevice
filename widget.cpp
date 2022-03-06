@@ -349,16 +349,15 @@ void Widget::playTestSound(QString deviceName, qreal volume, int duration)
     playThread->start();
 }
 
-void Widget::startRecord(QString deviceName, int duration)
+void Widget::startRecord(QString deviceName, int duration, int testItemIndex)
 {
     /****************功能：新建/清空tempFile******************/
     //若temp.wav已存在，录制前清空其之前的数据
     //若不存在，会在程序所在目录下自动新建一个temp.wav
-    QFile tempFile(recordedAudioPath);
+    QFile tempFile(recordedAudioPath.append(testItemIndex));
     bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
     if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
     {
-    qDebug()<< "QFileOpenFail";
     QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
     return;
     }
@@ -400,9 +399,14 @@ double Widget::FindMaxInArray(double arr[],int cnt)
 
 void Widget::getPowArrayAtFrequency(double f, double arr[], int cnt, double sourcePowArr[])
 {
-    double accurateIndex = f/((double)11025/N);
+    //此函数获取频率f处前后cnt个频点的功率
+
+    double accurateIndex = f/((double)11025/N);//根据f计算出对应的精确频点
 //    qDebug()<<accurateIndex;
-    int middleIndex = (int)(accurateIndex*10)%10 < 5?(int)accurateIndex:(int)accurateIndex+1;//根据第一位小数四舍五入
+    //根据精确频点找到距离最近的整数频点（四舍五入）
+    int middleIndex = (int)(accurateIndex*10)%10 < 5?(int)accurateIndex:(int)accurateIndex+1;
+
+    //返回f处的功率数组
     for(int i=0; i<cnt; i++)
     {
         arr[i] = sourcePowArr[middleIndex-cnt/2+i];
@@ -413,6 +417,7 @@ void Widget::getPowArrayAtFrequency(double f, double arr[], int cnt, double sour
 double Widget::THDCalculate(double f, double sourcePowArr[])
 {
     double tempPowArrayAtFrequency[5];
+    //fundamentalWavePow为基波功率，sumOfHarmonicWavePow为谐波总功率
     double fundamentalWavePow, sumOfHarmonicWavePow=0;
     for(int i=1; i <= 11025/(2*(int)f); i++)//11025折半为最大的计算频率
     {
@@ -423,6 +428,8 @@ double Widget::THDCalculate(double f, double sourcePowArr[])
             sumOfHarmonicWavePow += FindMaxInArray(tempPowArrayAtFrequency, 5);
         }
     }
+    //用FindMaxInArray以避免不够精确导致的频点错误。在中心频点前后共5个频点中的最大值，是计算时用到的真正的数据。
+
     double THD = qSqrt(sumOfHarmonicWavePow/fundamentalWavePow);
     return THD;
 }
@@ -518,17 +525,24 @@ void Widget::TestFuncBase()
 //    qDebug() << "THDFun1"<< THDAt1KHz;
 }
 
-void Widget::TestFunc1st()
+void Widget::TestFunc(int testItemIndex)
 {
-    playTestSound("JVC", 1, 5000);//播放测试音频，5s
-    startRecord("Real",10000);//开始录音
-    qDebug()<<"录音结束";
+    /****************Step1：开启串口，发送指令**************/
+//    openSerialPort(AR720_SerialPort);
+//    switchMode(AR720_SwitchToUSB);
+//    openSerialPort(USBTo485_Converter_SerialPort);
+//    switchChannel(N76E885_SwitchToUSB);
 
-    /****************功能：执行FFT**************/
+    /****************Step2：播放音频，开始录音**************/
+    //ooooo寻找声卡
+    playTestSound("Realtek", 1, 5000);
+    startRecord("HUAWEI", 10000, testItemIndex);
+
+    /****************Step3：分析文件，判断是否通过**************/
     AudioFile<double> sourceFile;
     sourceFile.load(recordedAudioPath.toStdString());
     if ((din == NULL)||(out == NULL)){
-        qDebug() << "Error:insufficient available memory" << endl;
+        QMessageBox::information(this, "提示", "FFT内存错误",QMessageBox::Ok);;
     }
     else{
         for (int i=0; i<N; i++)
@@ -539,23 +553,27 @@ void Widget::TestFunc1st()
     }
     fftw_execute(fftwPlan);
 
-    /****************功能：输出源音频数据至文件**************/
-    QString outputPath = qApp->applicationDirPath().append("/AmpOutput.txt");
-    QFile outputFile(outputPath);
-    outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
-    QTextStream outStream(&outputFile);
-    outStream.setCodec("UTF-8");
-    outStream << "Amplitude" << endl;
+    /****************Step4：输出源音频数据至文件**************/
+
+//    QString outputPath = qApp->applicationDirPath().append("/AmpOutput").append(testItemIndex).append(".txt");
+//    QFile outputFile(outputPath);
+//    outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
+//    QTextStream outStream(&outputFile);
+//    outStream.setCodec("UTF-8");
+//    outStream << "Amplitude" << endl;
     for(int i=0; i<N; i++)
     {
-        fOut[i] = (double)i*11025/N;//计算频率
+//        fOut[i] = (double)i*11025/N;//计算频率
         powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
-        outStream << fOut[i] << "Hz " << powOut[i] << endl;
+//        outStream << fOut[i] << "Hz " << powOut[i] << endl;
     }
 
-    /****************功能：计算THD**************/
+    /****************Step5：计算THD并判断**************/
     double THD = THDCalculate(1000, powOut);
-    qDebug() << "THD" << THD;
+//    qDebug() << "THD" << THD;
+    tableModel->item(testItemIndex-1, 3)->setData(THD);
+
+    /****************Step6：开启下一步测试**************/
 }
 
 void Widget::TestFunc2nd()
@@ -577,9 +595,7 @@ void Widget::on_startButton_clicked()
 {
     //更新设备列表
 
-    if(portAR720 == NULL)
-    {openSerialPort(AR720_SerialPort);}
-    switchMode(AR720_SwitchToUSB);
+   TestFunc(1);
 }
 
 void Widget::on_stopButton_clicked()
