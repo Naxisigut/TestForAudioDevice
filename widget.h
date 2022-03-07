@@ -38,6 +38,7 @@ public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
     QStandardItemModel *tableModel;
+    //Qtimer
 
     /**************************************************************************************/
     /************************************串口与模式切换**************************************/
@@ -64,7 +65,7 @@ public:
     QList<QAudioDeviceInfo>  inputDeviceList;
     playTestAudioThread      *playThread;
     int                      searchDevice(QString str, QList<QAudioDeviceInfo> &list);
-    void                     playTestSound(QString deviceName, qreal volume, int duration);
+    bool                     playTestSound(QString deviceName, qreal volume, int duration);
     bool                     startRecord(QString deviceName, int duration, int testItemIndex);
 
     /**************************************************************************************/
@@ -81,7 +82,8 @@ public:
     /***************************************测试模块****************************************/
     /**************************************************************************************/
     TestModulePara  Para_1,Para_2,Para_3,Para_4;
-    void            TestFunc(TestModulePara para);
+    QList<TestModulePara> testParaList;
+    bool            TestFunc(TestModulePara para);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);
@@ -98,8 +100,6 @@ private:
 
 private slots:
     void on_startButton_clicked();
-
-    void on_stopButton_clicked();
 
     void on_closeButton_clicked();
 

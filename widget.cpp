@@ -14,9 +14,8 @@ Widget::Widget(QWidget *parent)
     , ui(new Ui::Widget)
 {
     ui->setupUi(this);
-//    ui->inputListCombox->addItems(audioRecorder->audioInputs());
-    ui->inputListCombox->installEventFilter(this);
-    ui->outputListCombox->installEventFilter(this);
+    ui->label->setStyleSheet("QLabel{background:#FFFFFF;}");
+
 
     QSettings testItemSetting(qApp->applicationDirPath().append("/testItemSetting.ini"), QSettings::IniFormat);
     Para_1.name           = testItemSetting.value("Item1/name").toString();
@@ -55,6 +54,9 @@ Widget::Widget(QWidget *parent)
     {Para_3.channelCmd    = N76E885_SwitchToUSB;}
     Para_3.isBTWaitNeeded = testItemSetting.value("Item3/isBTWaitNeeded").toInt();
 
+    testParaList.append(Para_1);
+    testParaList.append(Para_2);
+    testParaList.append(Para_3);
 
     tableModel = new QStandardItemModel;
     ui->tableView->setModel(tableModel);
@@ -63,7 +65,7 @@ Widget::Widget(QWidget *parent)
     tableModel->setHeaderData(1,Qt::Horizontal, "测试项");
     tableModel->setHeaderData(2,Qt::Horizontal, "THD");
     tableModel->setHeaderData(3,Qt::Horizontal, "结果");
-    for(int i=0; i<4; i++)
+    for(int i=0; i<3; i++)
     {
         for(int j=0; j<4; j++)
         {
@@ -71,11 +73,11 @@ Widget::Widget(QWidget *parent)
             tableModel->item(i, j)->setTextAlignment(Qt::AlignHCenter);
         }
     }
-    for(int i=0; i<4; i++)
+    for(int i=0; i<3; i++)
     {
         tableModel->item(i, 0)->setText(QString::number(i+1));
     }
-    for(int i=0; i<4; i++)
+    for(int i=0; i<3; i++)
     {
         tableModel->item(i,1)->setTextAlignment(Qt::AlignLeft);
     }
@@ -91,23 +93,19 @@ Widget::Widget(QWidget *parent)
     ui->tableView->setRowHeight(0,20);
     ui->tableView->setRowHeight(1,20);
     ui->tableView->setRowHeight(2,20);
-    ui->tableView->setRowHeight(3,20);
     ui->tableView->verticalHeader()->setVisible(false);
 
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
-        ui->outputListCombox->addItem(deviceInfo.deviceName());
     }
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
     {
         inputDeviceList.append(deviceInfo);
-        ui->inputListCombox->addItem(deviceInfo.deviceName());
     }
     foreach(const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts())
     {
         portInfoList.append(portInfo);
-        ui->portListCombox->addItem(portInfo.portName());
     }
 
     // Set up the playTestAudio format, eg.
@@ -145,30 +143,7 @@ Widget::~Widget()
 
 bool Widget::eventFilter(QObject *obj, QEvent *e)
 {
-    /**********功能：点击audioListCombox时更新设备列表**********/
-    if((obj == ui->inputListCombox) && (e->type() == QEvent::MouseButtonPress))
-    {
-        ui->inputListCombox->clear();
-        QList<QAudioDeviceInfo> list =QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-        foreach(QAudioDeviceInfo info, list)
-        {
-            ui->inputListCombox->addItem(info.deviceName());
-        }
-//        qDebug() << "press";
-        return QWidget::eventFilter(obj, e);//执行完上面的代码后，继续执行原有的功能
-    }else if((obj == ui->outputListCombox) && (e->type() == QEvent::MouseButtonPress))
-    {
-        ui->outputListCombox->clear();
-        QList<QAudioDeviceInfo> list =QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-        foreach(QAudioDeviceInfo info, list)
-        {
-            ui->outputListCombox->addItem(info.deviceName());
-        }
-//        qDebug() << "press";
-        return QWidget::eventFilter(obj, e);//执行完上面的代码后，继续执行原有的功能
-    }else{
-        return QWidget::eventFilter(obj, e);
-    }
+    return QWidget::eventFilter(obj, e);
 }
 
 
@@ -193,7 +168,7 @@ bool Widget::openSerialPort(int SerialPortIndex)
                 portAR720->setFlowControl(QSerialPort::NoFlowControl);//无流控制
                 portAR720->setParity(QSerialPort::NoParity);	//无校验位
                 portAR720->setStopBits(QSerialPort::OneStop); //一位停止位
-                qDebug() << portAR720->portName();
+//                qDebug() << portAR720->portName();
                 if(portAR720->isOpen() == true){portAR720->close();}
                 isFound = true;
             }
@@ -211,7 +186,7 @@ bool Widget::openSerialPort(int SerialPortIndex)
                 portConverter->setFlowControl(QSerialPort::NoFlowControl);//无流控制
                 portConverter->setParity(QSerialPort::NoParity);	//无校验位
                 portConverter->setStopBits(QSerialPort::OneStop); //一位停止位
-                qDebug() << portConverter->portName();
+//                qDebug() << portConverter->portName();
                 if(portConverter->isOpen() == true){portConverter->close();}
                 isFound = true;
             }
@@ -223,8 +198,16 @@ bool Widget::openSerialPort(int SerialPortIndex)
 
     if(isFound == false)
     {
-        QMessageBox::information(this, "提示", "没有发现串口",QMessageBox::Ok);
-        return 0;
+        switch (SerialPortIndex)
+        {
+        case AR720_SerialPort:
+            QMessageBox::information(this, "提示", "没有发现AR720串口",QMessageBox::Ok);
+            return 0;
+        case USBTo485_Converter_SerialPort:
+            QMessageBox::information(this, "提示", "没有发现Converter串口",QMessageBox::Ok);
+            return 0;
+        }
+
     }
 
     switch (SerialPortIndex) {
@@ -242,14 +225,14 @@ bool Widget::openSerialPort(int SerialPortIndex)
         {return 1;}
         else
         {
-            QMessageBox::information(this, "提示", "打开converter串口失败",QMessageBox::Ok);
+            QMessageBox::information(this, "提示", "打开Converter串口失败",QMessageBox::Ok);
             return 0;
         }
         break;
     default:
         break;
     }
-    return 0;
+    return 1;
 }
 
 char Widget::convertCharToHex(char ch)
@@ -300,7 +283,7 @@ void Widget::receiveAR720Info()
 {
 
     QByteArray info = portAR720->readAll();
-    qDebug() << "read:" <<info;
+//    qDebug() << "read:" <<info;
     ui->textEdit->append(info);
 
 }
@@ -363,58 +346,51 @@ int Widget::searchDevice(QString str, QList<QAudioDeviceInfo> &list)
     {
         if(list.at(i).deviceName().contains(str) == true)
         {
-//            qDebug()<<"包含"<<i;
             return i;
         }
-//        else {
-//            qDebug()<<"不包含i"<<i;
-//        }
     }
     return -1;//搜索不到设备时，返回-1
 }
 
-void Widget::playTestSound(QString deviceName, qreal volume, int duration)
+bool Widget::playTestSound(QString deviceName, qreal volume, int duration)
 {
-    qDebug() << "playTestSoundBegin";
+//    qDebug() << "playTestSoundBegin";
     PlayThreadPara playPara;
     int deviceIndex = searchDevice(deviceName, outputDeviceList);
     if (deviceIndex != -1){
         playPara.info = outputDeviceList.at(deviceIndex);
     }else {
         QMessageBox::information(this, "提示", "没有发现播放设备",QMessageBox::Ok);
-        return;
+        return 0;
     }
     playPara.volume = volume;
     playPara.duration = duration;
     playThread = new playTestAudioThread(playPara, this);
     playThread->start();
-    qDebug() << "playTestSoundOver";
+//    qDebug() << "playTestSoundOver";
+    return 1;
 }
 
 bool Widget::startRecord(QString deviceName, int duration, int testItemIndex)
 {
-    qDebug() << "startRecordBegin";
+//    qDebug() << "startRecordBegin";
     /****************功能：新建/清空tempFile******************/
     //若temp.wav已存在，录制前清空其之前的数据
     //若不存在，会在程序所在目录下自动新建一个temp.wav
     QString tempRecordedAudioPath = recordedAudioPath;
     tempRecordedAudioPath.append(QString::number(testItemIndex)).append(".wav");
-    qDebug()<<tempRecordedAudioPath;
     QFile tempFile(tempRecordedAudioPath);
 
-    bool QFileOpenOK = tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
-    if(QFileOpenOK != true)//如果tempFile打开失败，弹窗提示
-    {
-    QMessageBox::information(this, "提示", "临时文件打开失败",QMessageBox::Ok);
-    return 0;
-    }
+    tempFile.open(QIODevice::ReadWrite |QIODevice::Truncate);
     tempFile.close();
 
     /****************功能：开始录音，写入tempFile**************/
     int deviceIndex = searchDevice(deviceName, inputDeviceList);
-    if (deviceIndex != -1){
+    if (deviceIndex != -1)
+    {
         QAudioDeviceInfo info = inputDeviceList.at(deviceIndex);
-    }else {
+    }else
+    {
         QMessageBox::information(this, "提示", "没有发现录音设备",QMessageBox::Ok);
         return 0;
     }
@@ -423,12 +399,8 @@ bool Widget::startRecord(QString deviceName, int duration, int testItemIndex)
     audioRecorder->record();
     QTest::qWait(duration);//延时，单位为ms, 限定录制时间
     audioRecorder->stop();
-    qDebug()<<"startRecordOver";
     return 1;
 }
-
-
-
 
 
 /**************************************************************************************/
@@ -487,36 +459,44 @@ double Widget::THDCalculate(double f, double sourcePowArr[])
 /***************************************测试模块****************************************/
 /**************************************************************************************/
 
-void Widget::TestFunc(TestModulePara para)
+bool Widget::TestFunc(TestModulePara para)
 {
     /****************Step1：开启串口，发送指令**************/
-    openSerialPort(AR720_SerialPort);
+    if(openSerialPort(AR720_SerialPort)==false)
+        return 0;
     switchMode(para.modeCmd);
-    openSerialPort(USBTo485_Converter_SerialPort);
+    if(openSerialPort(USBTo485_Converter_SerialPort)==false)
+        return 0;
     switchChannel(para.channelCmd);
 
     /****************Step2：播放音频，开始录音**************/
-    //ooooo寻找声卡
     if(para.isBTWaitNeeded == 1)
     {
          if(QMessageBox::information(this, "提示", "蓝牙是否连接成功？",QMessageBox::Yes|QMessageBox::No) == 0x00010000)
          {
              portAR720->close();
              portConverter->close();
-             return;
+             return 0;
          };
+         QTest::qWait(2000);
     }
-    playTestSound(para.outputDevice, 1, 5000);
-    bool recordOK = startRecord(para.inputDevice, 10000, para.testItemIndex);
+    bool platOK = playTestSound(para.outputDevice, 1, 5000);
+    if(platOK == false)
+    {
+        QMessageBox::information(this, "提示", "录音失败",QMessageBox::Ok);
+        portAR720->close();
+        portConverter->close();
+        return 0;
+    }
+    bool recordOK = startRecord(para.inputDevice, 7000, para.testItemIndex);
     if(recordOK == false)
     {
         QMessageBox::information(this, "提示", "录音失败",QMessageBox::Ok);
         portAR720->close();
         portConverter->close();
-        return;
+        return 0;
     }
     /****************Step3：分析文件，判断是否通过**************/
-//    qDebug() << "分析文件开始";
     QString tempRecordedAudioPath = recordedAudioPath;
     tempRecordedAudioPath.append(QString::number(para.testItemIndex)).append(".wav");
     AudioFile<double> sourceFile;
@@ -525,9 +505,10 @@ void Widget::TestFunc(TestModulePara para)
         QMessageBox::information(this, "提示", "FFT内存错误",QMessageBox::Ok);
         portAR720->close();
         portConverter->close();
-        return;
+        return 0;
     }
-    else{
+    else
+    {
         for (int i=0; i<N; i++)
         {
             din[i][0] = sourceFile.samples[0][i];//将samples的channel0的数据赋给din
@@ -535,24 +516,12 @@ void Widget::TestFunc(TestModulePara para)
         }
     }
     fftw_execute(fftwPlan);
-//    qDebug() << "分析文件结束";
 
     /****************Step4：输出源音频数据至文件**************/
-//    qDebug() << "输出数据开始";
-//    QString outputPath = qApp->applicationDirPath().append("/AmpOutput").append(QString::number(testItemIndex)).append(".txt");
-//    qDebug()<<outputPath;
-//    QFile outputFile(outputPath);
-//    outputFile.open(QIODevice::WriteOnly |QIODevice::Truncate);
-//    QTextStream outStream(&outputFile);
-//    outStream.setCodec("UTF-8");
-//    outStream << "Amplitude" << endl;
     for(int i=0; i<N; i++)
     {
-//        fOut[i] = (double)i*11025/N;//计算频率
         powOut[i] = qPow(out[i][0],2)+qPow(out[i][1],2);//计算功率
-//        outStream << fOut[i] << "Hz " << powOut[i] << endl;
     }
-//    qDebug() << "输出数据结束";
 
     /****************Step5：计算THD并判断**************/
 //    qDebug() << "计算THD开始";
@@ -571,6 +540,7 @@ void Widget::TestFunc(TestModulePara para)
 //    qDebug() << "计算THD结束";
 
     /****************Step6：关闭串口**************/
+    QTest::qWait(3000);
     if(para.isBTWaitNeeded ==1)
     {
         switchMode(AR720_SwitchToUSB);
@@ -578,6 +548,8 @@ void Widget::TestFunc(TestModulePara para)
     }
     portAR720->close();
     portConverter->close();
+
+    return 1;
 }
 
 /**************************************************************************************/
@@ -586,10 +558,31 @@ void Widget::TestFunc(TestModulePara para)
 
 void Widget::on_startButton_clicked()
 {
-    //使能停止按键
-    TestFunc(Para_1);
-    TestFunc(Para_2);
-    TestFunc(Para_3);
+    ui->startButton->setEnabled(false);
+    for (int i=0; i<3; i++)
+    {
+        for (int j=2; j<4; j++)
+        {
+            tableModel->item(i,j)->setText("");
+            tableModel->item(i,j)->setData(QColor(255,255,255),Qt::BackgroundRole);
+        }
+    }
+    foreach(TestModulePara Para, testParaList)
+    {
+        QString labelDisplay = "第";
+        labelDisplay.append(QString::number(Para.testItemIndex)).append("项正在测试中");
+        ui->label->setText(labelDisplay);
+        if (TestFunc(Para)==false)
+        {
+            ui->label->setText("测试中断");
+            return;
+        }
+    }
+    ui->label->setText("测试完成");
+    ui->startButton->setEnabled(true);
+//    TestFunc(Para_1);
+//    TestFunc(Para_2);
+//    TestFunc(Para_3);
 
 }
 
