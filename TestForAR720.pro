@@ -19,6 +19,7 @@ SOURCES += \
     main.cpp \
     playTestAudioThread.cpp \
     playthreadpara.cpp \
+    testmodulepara.cpp \
     widget.cpp
 
 HEADERS += \
@@ -26,6 +27,7 @@ HEADERS += \
     fftw/include/fftw3.h \
     playTestAudioThread.h \
     playthreadpara.h \
+    testmodulepara.h \
     widget.h
 
 FORMS += \
