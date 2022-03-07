@@ -15,9 +15,8 @@ Widget::Widget(QWidget *parent)
 {
     ui->setupUi(this);
 //    ui->inputListCombox->addItems(audioRecorder->audioInputs());
-
-    ui->stopButton->setEnabled(false);
-    ui->startButton->setEnabled(false);
+    ui->inputListCombox->installEventFilter(this);
+    ui->outputListCombox->installEventFilter(this);
 
     QSettings testItemSetting(qApp->applicationDirPath().append("/testItemSetting.ini"), QSettings::IniFormat);
     Para_1.name           = testItemSetting.value("Item1/name").toString();
@@ -58,18 +57,12 @@ Widget::Widget(QWidget *parent)
 
 
     tableModel = new QStandardItemModel;
-    ui->tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignHCenter);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    ui->tableView->setColumnWidth(0,30);
-    ui->tableView->setColumnWidth(1,300);
-    ui->tableView->setColumnWidth(2,50);
-    ui->tableView->setColumnWidth(3,50);
-    ui->tableView->setRowHeight(0,20);
-    ui->tableView->setRowHeight(1,20);
-    ui->tableView->setRowHeight(2,20);
-    ui->tableView->setRowHeight(3,20);
-    ui->tableView->verticalHeader()->setVisible(false);
     ui->tableView->setModel(tableModel);
+    tableModel->setColumnCount(4);
+    tableModel->setHeaderData(0,Qt::Horizontal, "序号");
+    tableModel->setHeaderData(1,Qt::Horizontal, "测试项");
+    tableModel->setHeaderData(2,Qt::Horizontal, "THD");
+    tableModel->setHeaderData(3,Qt::Horizontal, "结果");
     for(int i=0; i<4; i++)
     {
         for(int j=0; j<4; j++)
@@ -83,19 +76,24 @@ Widget::Widget(QWidget *parent)
         tableModel->item(i, 0)->setText(QString::number(i+1));
     }
     for(int i=0; i<4; i++)
-    {tableModel->item(i,1)->setTextAlignment(Qt::AlignLeft);
-     tableModel->setColumnCount(4);
-     tableModel->setHeaderData(0,Qt::Horizontal, "序号");
-     tableModel->setHeaderData(1,Qt::Horizontal, "测试项");
-     tableModel->setHeaderData(2,Qt::Horizontal, "THD");
-     tableModel->setHeaderData(3,Qt::Horizontal, "结果");}
-     tableModel->item(0, 1)->setText(Para_1.name);
-     tableModel->item(1, 1)->setText(Para_2.name);
-     tableModel->item(2, 1)->setText(Para_3.name);
+    {
+        tableModel->item(i,1)->setTextAlignment(Qt::AlignLeft);
+    }
+    tableModel->item(0, 1)->setText(Para_1.name);
+    tableModel->item(1, 1)->setText(Para_2.name);
+    tableModel->item(2, 1)->setText(Para_3.name);
+    ui->tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignHCenter);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    ui->tableView->setColumnWidth(0,30);
+    ui->tableView->setColumnWidth(1,300);
+    ui->tableView->setColumnWidth(2,50);
+    ui->tableView->setColumnWidth(3,50);
+    ui->tableView->setRowHeight(0,20);
+    ui->tableView->setRowHeight(1,20);
+    ui->tableView->setRowHeight(2,20);
+    ui->tableView->setRowHeight(3,20);
+    ui->tableView->verticalHeader()->setVisible(false);
 
-
-    ui->inputListCombox->installEventFilter(this);
-    ui->outputListCombox->installEventFilter(this);
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
