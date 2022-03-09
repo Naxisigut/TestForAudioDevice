@@ -35,7 +35,6 @@ FORMS += \
 
 QT += \
     multimedia \
-    testlib \
     serialport
 
 # Default rules for deployment.

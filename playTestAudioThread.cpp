@@ -30,7 +30,6 @@ void playTestAudioThread::run()
     QTimer testSoundDuration;
 //    qDebug()<< output.state();
 //    qDebug() << output.error();
-//    QTest::qWait(duration);
     loop = new QEventLoop;
     connect(&testSoundDuration, &QTimer::timeout,
             [&]()

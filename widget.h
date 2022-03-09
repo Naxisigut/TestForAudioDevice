@@ -10,7 +10,6 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QUrl>
-#include <QTest>
 #include <QtMath>
 #include <QMediaPlayer>
 #include <QTimer>
@@ -18,6 +17,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QSettings>
+#include <QTimer>
 #include <fftw3.h>
 #include <AudioFile.h>
 #include <playTestAudioThread.h>
@@ -37,8 +37,15 @@ class Widget : public QWidget
 public:
     Widget(QWidget *parent = nullptr);
     ~Widget();
-    QStandardItemModel *tableModel;
-    //Qtimer
+
+    /**************************************************************************************/
+    /**************************************界面与响应****************************************/
+    /**************************************************************************************/
+    QStandardItemModel      *tableModel;
+    QTimer                  *deviceDetecTimer;
+    void                    deviceDectFunc();
+    void                    whenDeviceIsFound();
+    void                    delay_MSec(unsigned int msec);
 
     /**************************************************************************************/
     /************************************串口与模式切换**************************************/
@@ -53,7 +60,6 @@ public:
     void                    receiveConverterInfo();
     void                    switchMode(int Mode);
     void                    switchChannel(int Channel);
-//    QByteArray QstringToHex(const QString);
 
     /**************************************************************************************/
     /************************************音频播放与录制**************************************/
@@ -81,27 +87,32 @@ public:
     /**************************************************************************************/
     /***************************************测试模块****************************************/
     /**************************************************************************************/
-    TestModulePara  Para_1,Para_2,Para_3,Para_4;
-    QList<TestModulePara> testParaList;
-    bool            TestFunc(TestModulePara para);
+    TestModulePara           Para_1,Para_2,Para_3;
+    QList<TestModulePara>    testParaList;
+    int                      TestFunc(TestModulePara para);
+
+//    TestModulePara tempPara;
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e);
 
 private:
-    QByteArray BT_CMD = "cmd_switch_to_bt\n";
-    QByteArray USB_CMD = "cmd_switch_to_usb\n";
-    QByteArray Master_CMD = "close_master_mic\n";
-    QByteArray Deputy_CMD = "close_deputy_mic\n";
-    QString ToBTChannel_CMD = "AA 01 01 01 02 01 00 00";
-    QString BTReply_CMD = "AA 01 01 01 02 01 B5 4D";
-    QString ToUSBChannel_CMD = "AA 01 01 01 02 02 00 00";
-    QString USBReply_CMD = "AA 01 01 01 02 02 F5 4C";
+    QByteArray           BT_CMD  = "cmd_switch_to_bt\n";
+    QByteArray          USB_CMD  = "cmd_switch_to_usb\n";
+    QByteArray       Master_CMD  = "close_master_mic\n";
+    QByteArray       Deputy_CMD  = "close_deputy_mic\n";
+    QString     ToBTChannel_CMD  = "AA 01 01 01 02 01 00 00";
+    QString         BTReply_CMD  = "AA 01 01 01 02 01 B5 4D";
+    QString    ToUSBChannel_CMD  = "AA 01 01 01 02 02 00 00";
+    QString        USBReply_CMD  = "AA 01 01 01 02 02 F5 4C";
 
 private slots:
     void on_startButton_clicked();
 
-    void on_closeButton_clicked();
+//    void on_pushButton_clicked();
+
+signals:
+    void deviceIsFound();
 
 private:
     Ui::Widget *ui;

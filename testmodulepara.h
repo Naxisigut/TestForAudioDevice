@@ -16,7 +16,12 @@ public:
     int channelCmd;
     QString outputDevice;
     QString inputDevice;
+    double playVolume;
+    int playDuration;
+    int recordDuration;
+    bool isTestNeeded;
     bool isBTWaitNeeded;
+    double THDThreshold;
 
 };
 
