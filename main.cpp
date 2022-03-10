@@ -39,7 +39,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
     // 输出信息至文件中（读写、追加形式）
     QFile file("log.txt");
-    file.open(QIODevice::ReadWrite | QIODevice::Append);
+    file.open(QIODevice::ReadWrite | QIODevice::Truncate);
     QTextStream stream(&file);
     stream << strMessage << "\r\n";
     file.flush();
@@ -51,7 +51,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
 int main(int argc, char *argv[])
 {
-//    qInstallMessageHandler(myMessageOutput);//qdebug信息输出至文件
+    qInstallMessageHandler(myMessageOutput);//qdebug信息输出至文件
 
     QApplication a(argc, argv);
     QApplication::setStyle(QStyleFactory::create("Fusion"));

@@ -24,6 +24,7 @@ SOURCES += \
 
 HEADERS += \
     AudioFile.h \
+    enum_for_all.h \
     fftw/include/fftw3.h \
     playTestAudioThread.h \
     playthreadpara.h \

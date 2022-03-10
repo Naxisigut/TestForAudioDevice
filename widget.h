@@ -22,6 +22,7 @@
 #include <AudioFile.h>
 #include <playTestAudioThread.h>
 #include <testmodulepara.h>
+#include <enum_for_all.h>
 
 //#define N 131072
 #define N 32768
@@ -87,7 +88,9 @@ public:
     /**************************************************************************************/
     /***************************************测试模块****************************************/
     /**************************************************************************************/
-    TestModulePara           Para_1,Para_2,Para_3;
+    int                      testItemNumber;
+    QString                  settingPath;
+//    TestModulePara           Para_1,Para_2,Para_3;
     QList<TestModulePara>    testParaList;
     int                      TestFunc(TestModulePara para);
 

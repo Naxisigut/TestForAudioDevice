@@ -1,14 +1,6 @@
 #include "widget.h"
 #include "ui_widget.h"
 
-enum Mode_ENUM {AR720_SwitchToBT =1,
-                AR720_SwitchToUSB,
-               }Mode;
-enum Channel_ENUM{N76E885_SwitchToBT=1,
-                  N76E885_SwitchToUSB,}Channel;
-enum SerialPort_ENUM{AR720_SerialPort =1,
-                     USBTo485_Converter_SerialPort}SerialPort_Index;
-
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
@@ -22,64 +14,16 @@ Widget::Widget(QWidget *parent)
     ui->isFoundLabel->setStyleSheet("QLabel{background:#FF0000;}");
     ui->isFoundLabel->setText("没有发现设备");
 
-//    QString SettingPath = qApp->applicationDirPath().append("/testItemSetting.ini");
-//    qDebug() << "ini Path:" <<SettingPath;
-    QSettings testItemSetting(qApp->applicationDirPath().append("/testItemSetting.ini"), QSettings::IniFormat);
-//    QSettings testItemSetting(SettingPath, QSettings::IniFormat);
-    Para_1.name           = testItemSetting.value("Item1/name").toString();
-    Para_1.testItemIndex  = testItemSetting.value("Item1/testItemIndex").toInt();
-    Para_1.outputDevice   = testItemSetting.value("Item1/outputDevice").toString();
-    Para_1.inputDevice    = testItemSetting.value("Item1/inputDevice").toString();
-    Para_1.playVolume     = testItemSetting.value("Item1/playVolume").toDouble();
-    Para_1.playDuration   = testItemSetting.value("Item1/playDuration").toInt();
-    Para_1.recordDuration = testItemSetting.value("Item1/recordDuration").toInt();
-    Para_1.THDThreshold   = testItemSetting.value("Item1/THDThreshold").toDouble();
-    if(testItemSetting.value("Item1/modeCmd").toString().contains("BT"))
-    {Para_1.modeCmd       = AR720_SwitchToBT;}else
-    {Para_1.modeCmd       = AR720_SwitchToUSB;}
-    if(testItemSetting.value("Item1/channelCmd").toString().contains("BT"))
-    {Para_1.channelCmd    = N76E885_SwitchToBT;}else
-    {Para_1.channelCmd    = N76E885_SwitchToUSB;}
-    Para_1.isTestNeeded   = testItemSetting.value("Item1/isTestNeeded").toInt();
-    Para_1.isBTWaitNeeded = testItemSetting.value("Item1/isBTWaitNeeded").toInt();
-
-    Para_2.name           = testItemSetting.value("Item2/name").toString();
-    Para_2.testItemIndex  = testItemSetting.value("Item2/testItemIndex").toInt();
-    Para_2.outputDevice   = testItemSetting.value("Item2/outputDevice").toString();
-    Para_2.inputDevice    = testItemSetting.value("Item2/inputDevice").toString();
-    Para_2.playVolume     = testItemSetting.value("Item2/playVolume").toDouble();
-    Para_2.playDuration   = testItemSetting.value("Item2/playDuration").toInt();
-    Para_2.recordDuration = testItemSetting.value("Item2/recordDuration").toInt();
-    Para_2.THDThreshold   = testItemSetting.value("Item2/THDThreshold").toDouble();
-    if(testItemSetting.value("Item2/modeCmd").toString().contains("BT"))
-    {Para_2.modeCmd       = AR720_SwitchToBT;}else
-    {Para_2.modeCmd       = AR720_SwitchToUSB;}
-    if(testItemSetting.value("Item2/channelCmd").toString().contains("BT"))
-    {Para_2.channelCmd    = N76E885_SwitchToBT;}else
-    {Para_2.channelCmd    = N76E885_SwitchToUSB;}
-    Para_2.isTestNeeded   = testItemSetting.value("Item2/isTestNeeded").toInt();
-    Para_2.isBTWaitNeeded = testItemSetting.value("Item2/isBTWaitNeeded").toInt();
-
-    Para_3.name           = testItemSetting.value("Item3/name").toString();
-    Para_3.testItemIndex  = testItemSetting.value("Item3/testItemIndex").toInt();
-    Para_3.outputDevice   = testItemSetting.value("Item3/outputDevice").toString();
-    Para_3.inputDevice    = testItemSetting.value("Item3/inputDevice").toString();
-    Para_3.playVolume     = testItemSetting.value("Item3/playVolume").toDouble();
-    Para_3.playDuration   = testItemSetting.value("Item3/playDuration").toInt();
-    Para_3.recordDuration = testItemSetting.value("Item3/recordDuration").toInt();
-    Para_3.THDThreshold   = testItemSetting.value("Item3/THDThreshold").toDouble();
-    if(testItemSetting.value("Item3/modeCmd").toString().contains("BT"))
-    {Para_3.modeCmd       = AR720_SwitchToBT;}else
-    {Para_3.modeCmd       = AR720_SwitchToUSB;}
-    if(testItemSetting.value("Item3/channelCmd").toString().contains("BT"))
-    {Para_3.channelCmd    = N76E885_SwitchToBT;}else
-    {Para_3.channelCmd    = N76E885_SwitchToUSB;}
-    Para_3.isTestNeeded   = testItemSetting.value("Item3/isTestNeeded").toInt();
-    Para_3.isBTWaitNeeded = testItemSetting.value("Item3/isBTWaitNeeded").toInt();
-
-    testParaList.append(Para_1);
-    testParaList.append(Para_2);
-    testParaList.append(Para_3);
+    settingPath = qApp->applicationDirPath().append("/testItemSetting.ini");
+    QSettings testItemSetting(settingPath, QSettings::IniFormat);
+    testItemNumber = testItemSetting.value("Item/testItemNumber").toInt();
+    for(int i=0; i<testItemNumber; i++)
+    {
+        TestModulePara para;
+        para.clear();
+        para.readINI(settingPath, i);
+        testParaList.append(para);
+    }
 
     tableModel = new QStandardItemModel;
     ui->tableView->setModel(tableModel);
@@ -596,8 +540,8 @@ int Widget::TestFunc(TestModulePara para)
     /****************Step5：计算THD并判断**************/
 //    qDebug()<<"Calculate THD";
     double THD = THDCalculate(1000, powOut);
-    qDebug() << "THD" << THD;
-    qDebug() << "THDThreshold" << para.THDThreshold;
+//    qDebug() << "THD" << THD;
+//    qDebug() << "THDThreshold" << para.THDThreshold;
     tableModel->item(para.testItemIndex-1,2)->setText(QString::number(THD*100,'f', 1).append("%"));
     int isPass;
     if(THD <=para.THDThreshold)
