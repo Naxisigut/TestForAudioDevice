@@ -64,7 +64,8 @@ Widget::Widget(QWidget *parent)
     deviceDetecTimer = new QTimer;
     deviceDetecTimer->start(2000);
     connect(deviceDetecTimer, &QTimer::timeout, this, &Widget::deviceDectFunc);
-    connect(this, &Widget::deviceIsFound, this, &Widget::whenDeviceIsFound);
+    connect(this, &Widget::deviceFound, this, &Widget::whenDeviceFound);
+    connect(this, &Widget::deviceNotFound, this, &Widget::whenDeviceNotFound);
 
     // Set up the playTestAudio format
     format.setSampleRate(44100);
@@ -102,12 +103,18 @@ Widget::~Widget()
 
 void Widget::deviceDectFunc()
 {
+    int isFound = 0;
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
         outputDeviceList.append(deviceInfo);
         if(deviceInfo.deviceName().contains("JVC") == true)
-           emit deviceIsFound();
+           {
+            emit deviceFound();
+            isFound=1;
+           }
     }
+    if(isFound == 0)
+        emit deviceNotFound();
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
     {
         inputDeviceList.append(deviceInfo);
@@ -119,10 +126,19 @@ void Widget::deviceDectFunc()
 
 }
 
-void Widget::whenDeviceIsFound()
+void Widget::whenDeviceFound()
 {
     ui->isFoundLabel->setStyleSheet("QLabel{background:#FFFF00;}");
     ui->isFoundLabel->setText("设备已连接");
+//    qDebug()<<"Found";
+}
+
+void Widget::whenDeviceNotFound()
+{
+    ui->isFoundLabel->setStyleSheet("QLabel{background:#FF0000;}");
+    ui->isFoundLabel->setText("没有发现设备");
+//    qDebug()<<"NotFound";
+
 }
 
 void Widget::delay_MSec(unsigned int msec)

@@ -45,7 +45,8 @@ public:
     QStandardItemModel      *tableModel;
     QTimer                  *deviceDetecTimer;
     void                    deviceDectFunc();
-    void                    whenDeviceIsFound();
+    void                    whenDeviceFound();
+    void                    whenDeviceNotFound();
     void                    delay_MSec(unsigned int msec);
 
     /**************************************************************************************/
@@ -115,7 +116,8 @@ private slots:
 //    void on_pushButton_clicked();
 
 signals:
-    void deviceIsFound();
+    void deviceFound();
+    void deviceNotFound();
 
 private:
     Ui::Widget *ui;

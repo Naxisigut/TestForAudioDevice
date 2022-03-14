@@ -51,7 +51,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 
 int main(int argc, char *argv[])
 {
-    qInstallMessageHandler(myMessageOutput);//qdebug信息输出至文件
+//    qInstallMessageHandler(myMessageOutput);//qdebug信息输出至文件
 
     QApplication a(argc, argv);
     QApplication::setStyle(QStyleFactory::create("Fusion"));
