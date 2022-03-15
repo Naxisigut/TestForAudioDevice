@@ -104,8 +104,15 @@ Widget::~Widget()
 void Widget::deviceDectFunc()
 {
     int isFound = 0;
+    outputDeviceList.clear();
+    inputDeviceList.clear();
+    portInfoList.clear();
+
+//    qDebug()<<"deviceDectFunc";
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
     {
+
+//        qDebug()<<deviceInfo.deviceName();
         outputDeviceList.append(deviceInfo);
         if(deviceInfo.deviceName().contains("JVC") == true)
            {
@@ -115,10 +122,12 @@ void Widget::deviceDectFunc()
     }
     if(isFound == 0)
         emit deviceNotFound();
+
     foreach(const QAudioDeviceInfo &deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
     {
         inputDeviceList.append(deviceInfo);
     }
+
     foreach(const QSerialPortInfo &portInfo, QSerialPortInfo::availablePorts())
     {
         portInfoList.append(portInfo);
@@ -366,6 +375,9 @@ bool Widget::playTestSound(QString deviceName, qreal volume, int duration)
     int deviceIndex = searchDevice(deviceName, outputDeviceList);
     if (deviceIndex != -1){
         playPara.info = outputDeviceList.at(deviceIndex);
+        qDebug()<<"playTestSound";
+        qDebug()<<deviceIndex;
+        qDebug()<<playPara.info.deviceName();
     }else {
         QMessageBox::information(this, "提示", "没有发现播放设备",QMessageBox::Ok);
         return 0;
@@ -488,8 +500,9 @@ int Widget::TestFunc(TestModulePara para)
              portConverter->close();
              return -1;
          };
-         delay_MSec(2000);
     }
+    delay_MSec(2000);//720切换模式后不能马上播放音频，加2s延时
+//    qDebug()<< "TestFunc" <<para.outputDevice << para.playVolume << para.playDuration;
     bool playOK = playTestSound(para.outputDevice, para.playVolume, para.playDuration);
     if(playOK == false)
     {
@@ -657,12 +670,8 @@ void Widget::on_startButton_clicked()
 
 //void Widget::on_pushButton_clicked()
 //{
-//    tempPara.outputDevice = "C-Media";
-//    tempPara.inputDevice = "C-Media";
-//    tempPara.playVolume = 1;
-
 //    deviceDetecTimer->stop();
-//    ui->startButton->setEnabled(false);
-//    ui->isPassLabel->setStyleSheet("QLabel{background:#FFFFFF;}");
-//    ui->isPassLabel->setText("");
+//    playTestSound("JVC", 1, 5000);
+
+//    deviceDetecTimer->start(2000);
 //}

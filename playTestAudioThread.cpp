@@ -25,8 +25,12 @@ void playTestAudioThread::run()
     testAudioFile.open(QIODevice::ReadOnly);
 
     QAudioOutput audioOutput(parameter.info, format);
-    audioOutput.start(&testAudioFile);
+//    qDebug()<<"playTestAudioThread";
+//    qDebug()<<parameter.info.deviceName();
+
     audioOutput.setVolume(parameter.volume);
+    audioOutput.start(&testAudioFile);
+
     QTimer testSoundDuration;
 //    qDebug()<< output.state();
 //    qDebug() << output.error();

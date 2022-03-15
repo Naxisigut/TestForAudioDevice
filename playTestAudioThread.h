@@ -8,6 +8,7 @@
 #include <QAudioFormat>
 #include <QTimer>
 #include <playthreadpara.h>
+#include <QDebug>
 
 class playTestAudioThread : public QThread
 {
